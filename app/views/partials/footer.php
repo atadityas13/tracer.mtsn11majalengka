@@ -33,11 +33,8 @@
  * ========================================================
  */
 ?>
-    </main>
-</div>
-
-<footer class="mt-3 border-top bg-white">
-    <div class="container-fluid px-4 py-3">
+<footer class="app-footer">
+    <div class="app-footer-inner">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 small text-secondary">
             <div>
                 © <?= date('Y') ?> <strong class="text-dark">MTsN 11 Majalengka</strong>
@@ -48,6 +45,9 @@
         </div>
     </div>
 </footer>
+
+    </main>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

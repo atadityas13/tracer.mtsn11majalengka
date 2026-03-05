@@ -80,6 +80,19 @@ body {
 .main-content {
   flex: 1;
   padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-footer {
+  margin-top: auto;
+  border-top: 1px solid #dee2e6;
+  background: transparent;
+}
+
+.app-footer-inner {
+  padding: 0.75rem 0.25rem;
 }
 
 .topbar {
@@ -186,5 +199,13 @@ body {
   
   .topbar-right {
     justify-content: center;
+  }
+
+  .main-content {
+    padding: 1rem;
+  }
+
+  .app-footer-inner {
+    padding: 0.65rem 0;
   }
 }
