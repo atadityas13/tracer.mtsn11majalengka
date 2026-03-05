@@ -118,6 +118,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $_POST['action'] ?? '';
 
+    if ($action === 'nonaktifkan_siswa') {
+        $nisn = $_POST['nisn'] ?? '';
+        $stmt = db()->prepare("UPDATE siswa SET status_siswa='Tidak Melanjutkan' WHERE nisn=:nisn");
+        $stmt->execute(['nisn' => $nisn]);
+        set_flash('success', 'Status siswa berhasil diubah menjadi Tidak Melanjutkan.');
+        redirect('index.php?page=data-nilai');
+    }
+
     if ($action === 'download_template_rapor' || $action === 'download_template_uam') {
         if (!class_exists(Spreadsheet::class)) {
             set_flash('error', 'PhpSpreadsheet belum terpasang. Jalankan composer install.');
@@ -279,7 +287,15 @@ if (!in_array($monitorSemester, ['1', '2', '3', '4', '5', 'UAM'], true)) {
 }
 
 $mapelCount = (int) (db()->query('SELECT COUNT(*) c FROM mapel')->fetch()['c'] ?? 0);
-$students = db()->query("SELECT nisn, nis, nama, current_semester FROM siswa WHERE status_siswa='Aktif' ORDER BY nama")->fetchAll();
+
+// Filter students by current_semester matching the selected semester filter
+if ($monitorSemester === 'UAM') {
+    $students = db()->query("SELECT nisn, nis, nama, current_semester FROM siswa WHERE status_siswa='Aktif' AND current_semester=5 ORDER BY nama")->fetchAll();
+} else {
+    $stStudents = db()->prepare("SELECT nisn, nis, nama, current_semester FROM siswa WHERE status_siswa='Aktif' AND current_semester=:sem ORDER BY nama");
+    $stStudents->execute(['sem' => (int)$monitorSemester]);
+    $students = $stStudents->fetchAll();
+}
 
 $rowsMonitor = [];
 foreach ($students as $student) {
@@ -330,11 +346,11 @@ require dirname(__DIR__) . '/partials/header.php';
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-0 pt-3">
         <h3 class="mb-1">Import Data Nilai</h3>
-        <p class="text-secondary mb-0">Download template dan upload nilai melalui modal import agar halaman lebih ringkas.</p>
+        <p class="text-secondary mb-0">Download template dan upload nilai.</p>
     </div>
     <div class="card-body">
         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportNilai">
-            <i class="bi bi-cloud-arrow-up me-1"></i>Buka Modal Import Nilai
+            <i class="bi bi-cloud-arrow-up me-1"></i>Import Nilai
         </button>
     </div>
 </div>
@@ -383,12 +399,13 @@ require dirname(__DIR__) . '/partials/header.php';
                     <th>Current Semester</th>
                     <th>Jumlah Entri</th>
                     <th>Status</th>
+                    <th class="text-end">Aksi</th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php if (count($rowsMonitor) === 0): ?>
                     <tr>
-                        <td colspan="6" class="text-center text-secondary">Tidak ada data untuk filter ini.</td>
+                        <td colspan="7" class="text-center text-secondary">Tidak ada data untuk filter ini.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($rowsMonitor as $row): ?>
@@ -402,6 +419,20 @@ require dirname(__DIR__) . '/partials/header.php';
                                 <span class="badge <?= $row['uploaded'] ? 'text-bg-success' : 'text-bg-secondary' ?>">
                                     <?= e($row['status_label']) ?>
                                 </span>
+                            </td>
+                            <td class="text-end">
+                                <?php if (!$row['uploaded']): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="if(confirm('Nonaktifkan siswa <?= e($row['nama']) ?>? Status akan diubah menjadi Tidak Melanjutkan.')) document.getElementById('formNonaktif<?= e($row['nisn']) ?>').submit();" title="Nonaktifkan">
+                                        <i class="bi bi-x-circle"></i> Nonaktifkan
+                                    </button>
+                                    <form id="formNonaktif<?= e($row['nisn']) ?>" method="post" class="d-none">
+                                        <?= csrf_input() ?>
+                                        <input type="hidden" name="action" value="nonaktifkan_siswa">
+                                        <input type="hidden" name="nisn" value="<?= e($row['nisn']) ?>">
+                                    </form>
+                                <?php else: ?>
+                                    <span class="text-secondary">-</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

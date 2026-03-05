@@ -237,29 +237,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('index.php?page=siswa');
     }
 
-    if ($action === 'update_status') {
-        $stmt = db()->prepare('UPDATE siswa SET status_siswa=:status WHERE nisn=:nisn');
+    if ($action === 'update') {
+        $nisn = trim($_POST['nisn'] ?? '');
+        $nisBaru = trim($_POST['nis'] ?? '');
+        
+        // Check if NIS is being changed and if new NIS already exists
+        $cek = db()->prepare('SELECT nis FROM siswa WHERE nis=:nis AND nisn!=:nisn LIMIT 1');
+        $cek->execute(['nis' => $nisBaru, 'nisn' => $nisn]);
+        if ($cek->fetch()) {
+            set_flash('error', 'NIS sudah digunakan siswa lain.');
+            redirect('index.php?page=siswa');
+        }
+        
+        $stmt = db()->prepare('UPDATE siswa SET nis=:nis, nama=:nama, tempat_lahir=:tempat, tgl_lahir=:tgl, current_semester=:semester, status_siswa=:status WHERE nisn=:nisn');
         $stmt->execute([
+            'nis' => $nisBaru,
+            'nama' => trim($_POST['nama'] ?? ''),
+            'tempat' => trim($_POST['tempat_lahir'] ?? ''),
+            'tgl' => $_POST['tgl_lahir'] ?? '',
+            'semester' => (int) ($_POST['current_semester'] ?? 1),
             'status' => $_POST['status_siswa'] ?? 'Aktif',
-            'nisn' => $_POST['nisn'] ?? '',
+            'nisn' => $nisn,
         ]);
-        set_flash('success', 'Status siswa diperbarui.');
+        set_flash('success', 'Data siswa berhasil diperbarui.');
+        redirect('index.php?page=siswa');
+    }
+
+    if ($action === 'delete') {
+        $nisn = $_POST['nisn'] ?? '';
+        $stmt = db()->prepare('DELETE FROM siswa WHERE nisn=:nisn');
+        $stmt->execute(['nisn' => $nisn]);
+        set_flash('success', 'Data siswa berhasil dihapus.');
         redirect('index.php?page=siswa');
     }
 }
 
 $siswa = db()->query('SELECT * FROM siswa ORDER BY nama')->fetchAll();
+$mapelList = db()->query('SELECT id, nama_mapel FROM mapel ORDER BY id')->fetchAll();
+$setting = setting_akademik();
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-0 pt-3">
         <h3 class="mb-1">Import Data Siswa dari Excel</h3>
-        <p class="text-secondary mb-0">Unduh template dan upload data siswa massal melalui modal import.</p>
+        <p class="text-secondary mb-0">Unduh template dan upload data siswa</p>
     </div>
     <div class="card-body">
         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportSiswa">
-            <i class="bi bi-cloud-arrow-up me-1"></i>Buka Modal Import Siswa
+            <i class="bi bi-cloud-arrow-up me-1"></i>Import Siswa
         </button>
     </div>
 </div>
@@ -283,17 +309,22 @@ require dirname(__DIR__) . '/partials/header.php';
                         <td><?= e((string)$s['current_semester']) ?></td>
                         <td><span class="badge text-bg-light border"><?= e($s['status_siswa']) ?></span></td>
                         <td class="text-end">
-                            <form method="post" class="d-inline-flex gap-2 align-items-center">
-                                <?= csrf_input() ?>
-                                <input type="hidden" name="action" value="update_status">
-                                <input type="hidden" name="nisn" value="<?= e($s['nisn']) ?>">
-                                <select name="status_siswa" class="form-select form-select-sm">
-                                    <option <?= $s['status_siswa'] === 'Aktif' ? 'selected' : '' ?>>Aktif</option>
-                                    <option <?= $s['status_siswa'] === 'Tidak Melanjutkan' ? 'selected' : '' ?>>Tidak Melanjutkan</option>
-                                    <option <?= $s['status_siswa'] === 'Lulus' ? 'selected' : '' ?>>Lulus</option>
-                                </select>
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">Update</button>
-                            </form>
+                            <div class="d-inline-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalDetailSiswa<?= e($s['nisn']) ?>" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalNilaiSiswa<?= e($s['nisn']) ?>" title="Nilai">
+                                    <i class="bi bi-card-list"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="if(confirm('Yakin hapus siswa <?= e($s['nama']) ?>?')) document.getElementById('formHapusSiswa<?= e($s['nisn']) ?>').submit();" title="Hapus">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="formHapusSiswa<?= e($s['nisn']) ?>" method="post" class="d-none">
+                                    <?= csrf_input() ?>
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="nisn" value="<?= e($s['nisn']) ?>">
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -379,4 +410,159 @@ require dirname(__DIR__) . '/partials/header.php';
         </div>
     </div>
 </div>
+
+<?php foreach ($siswa as $s): ?>
+<!-- Modal Detail Siswa -->
+<div class="modal fade" id="modalDetailSiswa<?= e($s['nisn']) ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Detail Siswa: <?= e($s['nama']) ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="nisn" value="<?= e($s['nisn']) ?>">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">NISN</label>
+                            <input type="text" class="form-control" value="<?= e($s['nisn']) ?>" disabled>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">NIS</label>
+                            <input type="text" class="form-control" name="nis" value="<?= e($s['nis']) ?>" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nama</label>
+                            <input type="text" class="form-control" name="nama" value="<?= e($s['nama']) ?>" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tempat Lahir</label>
+                            <input type="text" class="form-control" name="tempat_lahir" value="<?= e($s['tempat_lahir']) ?>" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tanggal Lahir</label>
+                            <input type="date" class="form-control" name="tgl_lahir" value="<?= e($s['tgl_lahir']) ?>" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Current Semester</label>
+                            <select name="current_semester" class="form-select">
+                                <?php for ($i = 1; $i <= 5; $i++): ?>
+                                    <option value="<?= $i ?>" <?= (int)$s['current_semester'] === $i ? 'selected' : '' ?>><?= $i ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select name="status_siswa" class="form-select">
+                                <option <?= $s['status_siswa'] === 'Aktif' ? 'selected' : '' ?>>Aktif</option>
+                                <option <?= $s['status_siswa'] === 'Tidak Melanjutkan' ? 'selected' : '' ?>>Tidak Melanjutkan</option>
+                                <option <?= $s['status_siswa'] === 'Lulus' ? 'selected' : '' ?>>Lulus</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nilai Siswa -->
+<div class="modal fade" id="modalNilaiSiswa<?= e($s['nisn']) ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Nilai Siswa: <?= e($s['nama']) ?> (<?= e($s['nisn']) ?>)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" id="tabNilai<?= e($s['nisn']) ?>" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-sem1-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem1-<?= e($s['nisn']) ?>" type="button">Semester 1</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-sem2-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem2-<?= e($s['nisn']) ?>" type="button">Semester 2</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-sem3-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem3-<?= e($s['nisn']) ?>" type="button">Semester 3</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-sem4-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem4-<?= e($s['nisn']) ?>" type="button">Semester 4</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-sem5-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem5-<?= e($s['nisn']) ?>" type="button">Semester 5</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-uam-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#uam-<?= e($s['nisn']) ?>" type="button">UAM</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="tabContent<?= e($s['nisn']) ?>">
+                    <?php for ($sem = 1; $sem <= 5; $sem++): 
+                        $stNilai = db()->prepare('SELECT nr.nilai_angka, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem AND nr.tahun_ajaran=:ta ORDER BY m.id');
+                        $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem, 'ta' => $setting['tahun_ajaran']]);
+                        $nilaiRapor = $stNilai->fetchAll();
+                    ?>
+                    <div class="tab-pane fade <?= $sem === 1 ? 'show active' : '' ?>" id="sem<?= $sem ?>-<?= e($s['nisn']) ?>">
+                        <h6 class="mb-3">Semester <?= $sem ?> - TA <?= e($setting['tahun_ajaran']) ?></h6>
+                        <?php if (count($nilaiRapor) > 0): ?>
+                            <div class="table-wrap">
+                                <table class="table table-sm table-bordered">
+                                    <thead><tr><th>Mata Pelajaran</th><th class="text-end">Nilai</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach ($nilaiRapor as $n): ?>
+                                            <tr>
+                                                <td><?= e($n['nama_mapel']) ?></td>
+                                                <td class="text-end"><?= e(number_format($n['nilai_angka'], 2)) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-secondary text-center">Belum ada nilai untuk semester ini.</p>
+                        <?php endif; ?>
+                    </div>
+                    <?php endfor; ?>
+                    
+                    <?php 
+                        $stUam = db()->prepare('SELECT nu.nilai_angka, m.nama_mapel FROM nilai_uam nu JOIN mapel m ON nu.mapel_id=m.id WHERE nu.nisn=:nisn ORDER BY m.id');
+                        $stUam->execute(['nisn' => $s['nisn']]);
+                        $nilaiUam = $stUam->fetchAll();
+                    ?>
+                    <div class="tab-pane fade" id="uam-<?= e($s['nisn']) ?>">
+                        <h6 class="mb-3">Ujian Akhir Madrasah (UAM)</h6>
+                        <?php if (count($nilaiUam) > 0): ?>
+                            <div class="table-wrap">
+                                <table class="table table-sm table-bordered">
+                                    <thead><tr><th>Mata Pelajaran</th><th class="text-end">Nilai</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach ($nilaiUam as $n): ?>
+                                            <tr>
+                                                <td><?= e($n['nama_mapel']) ?></td>
+                                                <td class="text-end"><?= e(number_format($n['nilai_angka'], 2)) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-secondary text-center">Belum ada nilai UAM.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endforeach; ?>
+
 <?php require dirname(__DIR__) . '/partials/footer.php';
