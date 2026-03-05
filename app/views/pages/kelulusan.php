@@ -71,7 +71,7 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
     <div class="card-body">
         <div class="alert alert-info border mb-3">Syarat: siswa aktif semester 5, nilai rapor lengkap semester 1-5, dan memiliki nilai UAM.</div>
-        <form method="post" class="row g-3 align-items-end" onsubmit="return confirm('Proses migrasi kelulusan?')">
+        <form method="post" class="row g-3 align-items-end" data-confirm="Proses migrasi kelulusan sekarang? Data siswa eligible akan dipindah ke alumni." data-confirm-title="Konfirmasi Migrasi">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="migrate">
             <div class="col-md-4">

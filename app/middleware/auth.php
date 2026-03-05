@@ -14,8 +14,7 @@ function require_role(array $roles): void
     require_login();
     $role = $_SESSION['user']['role'] ?? '';
     if (!in_array($role, $roles, true)) {
-        http_response_code(403);
-        echo 'Akses ditolak';
-        exit;
+        set_flash('error', 'Akses ditolak untuk menu ini.');
+        redirect('index.php?page=dashboard');
     }
 }

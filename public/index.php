@@ -50,8 +50,11 @@ switch ($page) {
         require_role(['admin', 'kurikulum']);
         require dirname(__DIR__) . '/app/views/pages/laporan.php';
         break;
-    default:
-        http_response_code(404);
-        echo 'Halaman tidak ditemukan';
+    case 'profile':
+        require_role(['admin', 'kurikulum']);
+        require dirname(__DIR__) . '/app/views/pages/profile.php';
         break;
+    default:
+        set_flash('error', 'Halaman tidak ditemukan.');
+        redirect('index.php?page=dashboard');
 }

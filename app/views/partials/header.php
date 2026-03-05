@@ -3,7 +3,6 @@ $user = current_user();
 $flash = get_flash();
 $page = $_GET['page'] ?? 'dashboard';
 $isAdmin = ($user['role'] ?? '') === 'admin';
-$flashClass = (($flash['type'] ?? '') === 'success') ? 'alert-success' : 'alert-danger';
 ?>
 <!doctype html>
 <html lang="id">
@@ -56,12 +55,6 @@ $flashClass = (($flash['type'] ?? '') === 'success') ? 'alert-success' : 'alert-
                     <i class="bi bi-printer"></i> Laporan & Cetak
                 </a>
             </nav>
-
-            <div class="mt-auto pt-2 border-top border-success-subtle">
-                <a class="btn btn-outline-light w-100" href="index.php?page=logout">
-                    <i class="bi bi-box-arrow-right"></i> Keluar
-                </a>
-            </div>
         </aside>
     <?php endif; ?>
 
@@ -70,23 +63,39 @@ $flashClass = (($flash['type'] ?? '') === 'success') ? 'alert-success' : 'alert-
             <header class="topbar card shadow-sm border-0 mb-3">
                 <?php $set = setting_akademik(); ?>
                 <div>
-                    <div class="fw-semibold"><?= e($user['nama_lengkap']) ?></div>
-                    <small class="text-secondary">Role: <?= e(strtoupper($user['role'])) ?></small>
+                    <div class="fw-semibold">Sistem e-Leger</div>
+                    <small class="text-secondary">Kelola data nilai, semester, dan kelulusan</small>
                 </div>
-                <div class="text-lg-end">
-                    <span class="badge text-bg-success-subtle text-success-emphasis border border-success-subtle">
-                        Tahun Ajaran <?= e($set['tahun_ajaran']) ?>
-                    </span>
-                    <span class="badge text-bg-primary-subtle text-primary-emphasis border border-primary-subtle ms-1">
-                        <?= e($set['semester_aktif']) ?>
-                    </span>
+                <div class="dropdown">
+                    <button class="btn btn-light border dropdown-toggle profile-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <?= e($user['nama_lengkap']) ?>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li class="px-3 pt-2 pb-1">
+                            <div class="fw-semibold mb-1"><?= e($user['nama_lengkap']) ?></div>
+                            <div class="small text-secondary">Role: <?= e(strtoupper($user['role'])) ?></div>
+                            <div class="small text-secondary">TA: <?= e($set['tahun_ajaran']) ?> (<?= e($set['semester_aktif']) ?>)</div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="index.php?page=profile">
+                                <i class="bi bi-person-gear me-2"></i>Profile
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="index.php?page=logout" data-confirm="Anda yakin ingin keluar dari aplikasi?" data-confirm-title="Konfirmasi Keluar">
+                                <i class="bi bi-box-arrow-right me-2"></i>Keluar
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </header>
         <?php endif; ?>
 
         <?php if ($flash): ?>
-            <div class="alert <?= e($flashClass) ?> alert-dismissible fade show shadow-sm" role="alert">
-                <?= e($flash['message']) ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+            <div id="swal-flash"
+                 data-type="<?= e($flash['type'] ?? 'success') ?>"
+                 data-message="<?= e($flash['message'] ?? '') ?>"
+                 hidden></div>
         <?php endif; ?>

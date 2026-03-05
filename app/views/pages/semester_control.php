@@ -80,7 +80,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <div class="alert alert-warning border mb-3">
             Proses ini akan mengunci nilai rapor semester target dan menaikkan current semester siswa aktif. Siswa status Tidak Melanjutkan tidak diproses.
         </div>
-        <form method="post" onsubmit="return confirm('Yakin finalisasi semester aktif?')">
+        <form method="post" data-confirm="Yakin finalisasi semester aktif? Nilai akan dikunci dan semester siswa aktif dinaikkan." data-confirm-title="Konfirmasi Finalisasi">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="finalisasi">
             <button type="submit" class="btn btn-danger">Finalisasi Sekarang</button>

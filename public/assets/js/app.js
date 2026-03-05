@@ -1,4 +1,33 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const swalTheme = {
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#64748b',
+  };
+
+  const flashNode = document.getElementById('swal-flash');
+  if (flashNode && window.Swal) {
+    const rawType = (flashNode.getAttribute('data-type') || 'success').toLowerCase();
+    const allowedTypes = ['success', 'error', 'warning', 'info'];
+    const flashType = allowedTypes.includes(rawType) ? rawType : 'success';
+    const flashMessage = flashNode.getAttribute('data-message') || '';
+    const flashTitleMap = {
+      success: 'Berhasil',
+      error: 'Gagal',
+      warning: 'Perhatian',
+      info: 'Informasi',
+    };
+
+    if (flashMessage) {
+      Swal.fire({
+        ...swalTheme,
+        icon: flashType,
+        title: flashTitleMap[flashType],
+        text: flashMessage,
+        confirmButtonText: 'OK',
+      });
+    }
+  }
+
   document.querySelectorAll('input, select, textarea').forEach((el) => {
     if (el.type === 'hidden') return;
 
@@ -39,11 +68,52 @@ document.addEventListener('DOMContentLoaded', () => {
     table.classList.add('table', 'table-hover', 'align-middle', 'mb-0');
   });
 
-  document.querySelectorAll('[data-confirm]').forEach((el) => {
-    el.addEventListener('click', (event) => {
-      const msg = el.getAttribute('data-confirm') || 'Yakin?';
-      if (!window.confirm(msg)) {
-        event.preventDefault();
+  const openSwalConfirm = (title, text) => {
+    if (!window.Swal) {
+      return Promise.resolve(window.confirm(text || title || 'Yakin?'));
+    }
+
+    return Swal.fire({
+      ...swalTheme,
+      icon: 'question',
+      title: title || 'Konfirmasi',
+      text: text || 'Yakin?',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, lanjutkan',
+      cancelButtonText: 'Batal',
+      reverseButtons: true,
+    }).then((result) => result.isConfirmed);
+  };
+
+  document.querySelectorAll('form[data-confirm]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+      if (form.dataset.confirmed === '1') {
+        return;
+      }
+
+      event.preventDefault();
+      const text = form.getAttribute('data-confirm') || 'Yakin?';
+      const title = form.getAttribute('data-confirm-title') || 'Konfirmasi';
+      const confirmed = await openSwalConfirm(title, text);
+      if (confirmed) {
+        form.dataset.confirmed = '1';
+        form.submit();
+      }
+    });
+  });
+
+  document.querySelectorAll('a[data-confirm], button[data-confirm]').forEach((el) => {
+    el.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const text = el.getAttribute('data-confirm') || 'Yakin?';
+      const title = el.getAttribute('data-confirm-title') || 'Konfirmasi';
+      const confirmed = await openSwalConfirm(title, text);
+      if (!confirmed) {
+        return;
+      }
+
+      if (el.tagName.toLowerCase() === 'a') {
+        window.location.href = el.getAttribute('href') || '#';
       }
     });
   });
