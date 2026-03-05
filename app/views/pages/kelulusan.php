@@ -1,4 +1,9 @@
 <?php
+$hasNamaColumn = (bool) db()->query("SHOW COLUMNS FROM alumni LIKE 'nama'")->fetch();
+if (!$hasNamaColumn) {
+    db()->exec("ALTER TABLE alumni ADD COLUMN nama VARCHAR(150) NULL AFTER nisn");
+}
+
 $eligibleSql = "SELECT s.nisn, s.nama
 FROM siswa s
 WHERE s.status_siswa='Aktif' AND s.current_semester = 6
@@ -41,10 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'migra
                 ];
             }
 
-            $stmtInsert = db()->prepare('INSERT INTO alumni (nisn, angkatan_lulus, data_ijazah_json) VALUES (:nisn,:angkatan,:json)
-                ON DUPLICATE KEY UPDATE angkatan_lulus=VALUES(angkatan_lulus), data_ijazah_json=VALUES(data_ijazah_json)');
+            $stmtInsert = db()->prepare('INSERT INTO alumni (nisn, nama, angkatan_lulus, data_ijazah_json) VALUES (:nisn,:nama,:angkatan,:json)
+                ON DUPLICATE KEY UPDATE nama=VALUES(nama), angkatan_lulus=VALUES(angkatan_lulus), data_ijazah_json=VALUES(data_ijazah_json)');
             $stmtInsert->execute([
                 'nisn' => $s['nisn'],
+                'nama' => $s['nama'],
                 'angkatan' => $angkatan,
                 'json' => json_encode($detail, JSON_UNESCAPED_UNICODE),
             ]);

@@ -225,7 +225,9 @@ require dirname(__DIR__) . '/partials/header.php';
                 Tabel <strong>users</strong> dan <strong>mapel</strong> tidak dapat dikosongkan melalui tool ini.
             </div>
             
-            <form method="post" onsubmit="return confirm('YAKIN ingin mengosongkan tabel ini? Data yang dihapus TIDAK DAPAT dikembalikan!');">
+            <form method="post"
+                data-confirm="YAKIN ingin mengosongkan tabel ini? Data yang dihapus TIDAK DAPAT dikembalikan!"
+                data-confirm-title="Konfirmasi Pengosongan Tabel">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="truncate">
                 
@@ -262,7 +264,9 @@ require dirname(__DIR__) . '/partials/header.php';
                 Backup akan menyimpan seluruh struktur tabel dan data ke file .sql di folder <code>database/backups/</code>
             </div>
             
-            <form method="post" onsubmit="return confirm('Buat backup database sekarang?');">
+            <form method="post"
+                data-confirm="Buat backup database sekarang?"
+                data-confirm-title="Konfirmasi Backup Database">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="backup">
                 
@@ -296,7 +300,10 @@ require dirname(__DIR__) . '/partials/header.php';
                                            download>
                                             <i class="bi bi-download"></i> Download
                                         </a>
-                                        <form method="post" class="d-inline" onsubmit="return confirm('Hapus file backup ini?');">
+                                            <form method="post"
+                                                class="d-inline"
+                                                data-confirm="Hapus file backup ini?"
+                                                data-confirm-title="Konfirmasi Hapus Backup">
                                             <?= csrf_input() ?>
                                             <input type="hidden" name="action" value="delete_backup">
                                             <input type="hidden" name="filename" value="<?= e($backup['name']) ?>">
@@ -329,7 +336,10 @@ require dirname(__DIR__) . '/partials/header.php';
                 Pastikan Anda memiliki backup terbaru sebelum melakukan restore.
             </div>
             
-            <form method="post" enctype="multipart/form-data" onsubmit="return confirm('YAKIN ingin restore database? Seluruh data saat ini akan ditimpa!');">
+            <form method="post"
+                enctype="multipart/form-data"
+                data-confirm="YAKIN ingin restore database? Seluruh data saat ini akan ditimpa!"
+                data-confirm-title="Konfirmasi Restore Database">
                 <?= csrf_input() ?>
                 <input type="hidden" name="action" value="restore">
                 

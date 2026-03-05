@@ -1,9 +1,14 @@
 <?php
+$hasNamaColumn = (bool) db()->query("SHOW COLUMNS FROM alumni LIKE 'nama'")->fetch();
+if (!$hasNamaColumn) {
+    db()->exec("ALTER TABLE alumni ADD COLUMN nama VARCHAR(150) NULL AFTER nisn");
+}
+db()->exec("UPDATE alumni a LEFT JOIN siswa s ON s.nisn = a.nisn SET a.nama = s.nama WHERE (a.nama IS NULL OR a.nama='') AND s.nama IS NOT NULL AND s.nama <> ''");
+
 $filterYear = trim($_GET['tahun_lulus'] ?? '');
 
-$sql = 'SELECT a.nisn, a.angkatan_lulus, a.data_ijazah_json, s.nama
-        FROM alumni a
-        LEFT JOIN siswa s ON s.nisn = a.nisn';
+$sql = 'SELECT a.nisn, a.nama, a.angkatan_lulus, a.data_ijazah_json
+    FROM alumni a';
 $params = [];
 
 if ($filterYear !== '') {
