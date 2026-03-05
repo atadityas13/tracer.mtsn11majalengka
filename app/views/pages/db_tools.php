@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
     $tmpFile = $_FILES['sql_file']['tmp_name'];
     $fileName = $_FILES['sql_file']['name'];
     
-    if (!str_ends_with(strtolower($fileName), '.sql')) {
+    if (strtolower(substr($fileName, -4)) !== '.sql') {
         set_flash('error', 'File harus berformat .sql');
         redirect('index.php?page=db-tools');
     }
@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $filename = $_POST['filename'] ?? '';
     $backupPath = dirname(__DIR__, 3) . '/database/backups/' . basename($filename);
     
-    if (file_exists($backupPath) && str_starts_with(basename($filename), 'backup_')) {
+    if (file_exists($backupPath) && substr(basename($filename), 0, 7) === 'backup_') {
         unlink($backupPath);
         set_flash('success', 'File backup berhasil dihapus.');
     } else {
@@ -183,7 +183,7 @@ $backups = [];
 if (is_dir($backupPath)) {
     $files = scandir($backupPath);
     foreach ($files as $file) {
-        if ($file !== '.' && $file !== '..' && str_ends_with($file, '.sql')) {
+        if ($file !== '.' && $file !== '..' && strtolower(substr($file, -4)) === '.sql') {
             $fullPath = $backupPath . '/' . $file;
             $backups[] = [
                 'name' => $file,
