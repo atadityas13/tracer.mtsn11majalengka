@@ -507,20 +507,43 @@ require dirname(__DIR__) . '/partials/header.php';
                         $stNilai = db()->prepare('SELECT nr.nilai_angka, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem AND nr.tahun_ajaran=:ta ORDER BY m.id');
                         $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem, 'ta' => $setting['tahun_ajaran']]);
                         $nilaiRapor = $stNilai->fetchAll();
+                        
+                        // Hitung rata-rata
+                        $totalNilai = 0;
+                        $jumlahMapel = count($nilaiRapor);
+                        foreach ($nilaiRapor as $n) {
+                            $totalNilai += $n['nilai_angka'];
+                        }
+                        $rataRata = $jumlahMapel > 0 ? $totalNilai / $jumlahMapel : 0;
                     ?>
                     <div class="tab-pane fade <?= $sem === 1 ? 'show active' : '' ?>" id="sem<?= $sem ?>-<?= e($s['nisn']) ?>">
                         <h6 class="mb-3">Semester <?= $sem ?> - TA <?= e($setting['tahun_ajaran']) ?></h6>
                         <?php if (count($nilaiRapor) > 0): ?>
                             <div class="table-wrap">
                                 <table class="table table-sm table-bordered">
-                                    <thead><tr><th>Mata Pelajaran</th><th class="text-end">Nilai</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="2" class="align-middle">Mata Pelajaran</th>
+                                            <th colspan="2" class="text-center">Nilai</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-center">Angka</th>
+                                            <th class="text-center">Huruf</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         <?php foreach ($nilaiRapor as $n): ?>
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
-                                                <td class="text-end"><?= e(number_format($n['nilai_angka'], 2)) ?></td>
+                                                <td class="text-center"><?= e(number_format($n['nilai_angka'], 0)) ?></td>
+                                                <td class="text-center"><?= ucwords(terbilang((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
+                                        <tr class="table-secondary fw-bold">
+                                            <td>Rata-Rata</td>
+                                            <td class="text-center"><?= e(number_format($rataRata, 2)) ?></td>
+                                            <td class="text-center"><?= ucwords(terbilang((int)$rataRata)) . ' Koma ' . ucwords(terbilang((int)(($rataRata - floor($rataRata)) * 100))) ?></td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -534,20 +557,43 @@ require dirname(__DIR__) . '/partials/header.php';
                         $stUam = db()->prepare('SELECT nu.nilai_angka, m.nama_mapel FROM nilai_uam nu JOIN mapel m ON nu.mapel_id=m.id WHERE nu.nisn=:nisn ORDER BY m.id');
                         $stUam->execute(['nisn' => $s['nisn']]);
                         $nilaiUam = $stUam->fetchAll();
+                        
+                        // Hitung rata-rata UAM
+                        $totalNilaiUam = 0;
+                        $jumlahMapelUam = count($nilaiUam);
+                        foreach ($nilaiUam as $n) {
+                            $totalNilaiUam += $n['nilai_angka'];
+                        }
+                        $rataRataUam = $jumlahMapelUam > 0 ? $totalNilaiUam / $jumlahMapelUam : 0;
                     ?>
                     <div class="tab-pane fade" id="uam-<?= e($s['nisn']) ?>">
                         <h6 class="mb-3">Ujian Akhir Madrasah (UAM)</h6>
                         <?php if (count($nilaiUam) > 0): ?>
                             <div class="table-wrap">
                                 <table class="table table-sm table-bordered">
-                                    <thead><tr><th>Mata Pelajaran</th><th class="text-end">Nilai</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="2" class="align-middle">Mata Pelajaran</th>
+                                            <th colspan="2" class="text-center">Nilai</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-center">Angka</th>
+                                            <th class="text-center">Huruf</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         <?php foreach ($nilaiUam as $n): ?>
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
-                                                <td class="text-end"><?= e(number_format($n['nilai_angka'], 2)) ?></td>
+                                                <td class="text-center"><?= e(number_format($n['nilai_angka'], 0)) ?></td>
+                                                <td class="text-center"><?= ucwords(terbilang((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
+                                        <tr class="table-secondary fw-bold">
+                                            <td>Rata-Rata</td>
+                                            <td class="text-center"><?= e(number_format($rataRataUam, 2)) ?></td>
+                                            <td class="text-center"><?= ucwords(terbilang((int)$rataRataUam)) . ' Koma ' . ucwords(terbilang((int)(($rataRataUam - floor($rataRataUam)) * 100))) ?></td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
