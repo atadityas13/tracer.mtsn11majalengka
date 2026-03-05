@@ -380,6 +380,20 @@ $monitorPage = min($monitorPage, max(1, $totalMonitorPages));
 $monitorOffset = ($monitorPage - 1) * $monitorPerPage;
 $rowsMonitorPaginated = array_slice($rowsMonitor, $monitorOffset, $monitorPerPage);
 
+// Helper function for clickable monitoring sort links
+$getMonitorSortLink = function($column, $label) use ($monitorSortBy, $monitorSortDir, $monitorSearch, $monitorSemester, $monitorStatus, $monitorPerPage) {
+    $newDir = ($monitorSortBy === $column && $monitorSortDir === 'ASC') ? 'DESC' : 'ASC';
+    $indicator = ($monitorSortBy === $column) ? ($monitorSortDir === 'ASC' ? ' ↑' : ' ↓') : '';
+    $url = "index.php?page=data-nilai" .
+        "&search_monitoring=" . urlencode($monitorSearch) .
+        "&sort_by_monitoring=" . urlencode($column) .
+        "&sort_dir_monitoring=" . urlencode($newDir) .
+        "&per_page_monitoring=" . urlencode((string) $monitorPerPage) .
+        "&semester_view=" . urlencode($monitorSemester) .
+        "&status_upload=" . urlencode($monitorStatus);
+    return '<a href="' . e($url) . '" class="text-dark text-decoration-none">' . e($label) . $indicator . '</a>';
+};
+
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 <div class="card border-0 shadow-sm mb-3">
@@ -404,26 +418,13 @@ require dirname(__DIR__) . '/partials/header.php';
             <input type="hidden" name="page" value="data-nilai">
             <input type="hidden" name="semester_view" value="<?= e($monitorSemester) ?>">
             <input type="hidden" name="status_upload" value="<?= e($monitorStatus) ?>">
-            <div class="col-md-3">
+            <div class="col-md-8">
                 <input type="text" name="search_monitoring" class="form-control form-control-sm" placeholder="Cari Nama/NIS/NISN..." value="<?= e($monitorSearch) ?>">
-            </div>
-            <div class="col-md-2">
-                <select name="sort_by_monitoring" class="form-select form-select-sm">
-                    <option value="nama" <?= $monitorSortBy === 'nama' ? 'selected' : '' ?>>Nama</option>
-                    <option value="current_semester" <?= $monitorSortBy === 'current_semester' ? 'selected' : '' ?>>Semester</option>
-                    <option value="status_label" <?= $monitorSortBy === 'status_label' ? 'selected' : '' ?>>Status</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select name="sort_dir_monitoring" class="form-select form-select-sm">
-                    <option value="ASC" <?= $monitorSortDir === 'ASC' ? 'selected' : '' ?>>↑ Naik</option>
-                    <option value="DESC" <?= $monitorSortDir === 'DESC' ? 'selected' : '' ?>>↓ Turun</option>
-                </select>
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-success btn-sm w-100">Cari</button>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <a href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>" class="btn btn-outline-secondary btn-sm w-100">Reset Cari</a>
             </div>
         </form>
@@ -453,12 +454,12 @@ require dirname(__DIR__) . '/partials/header.php';
             <table>
                 <thead>
                 <tr>
-                    <th>NISN</th>
-                    <th>NIS</th>
-                    <th>Nama</th>
-                    <th>Current Semester</th>
+                    <th><?php echo $getMonitorSortLink('nisn', 'NISN'); ?></th>
+                    <th><?php echo $getMonitorSortLink('nis', 'NIS'); ?></th>
+                    <th><?php echo $getMonitorSortLink('nama', 'Nama'); ?></th>
+                    <th><?php echo $getMonitorSortLink('current_semester', 'Current Semester'); ?></th>
                     <th>Jumlah Entri</th>
-                    <th>Status</th>
+                    <th><?php echo $getMonitorSortLink('status_label', 'Status'); ?></th>
                     <th class="text-end">Aksi</th>
                 </tr>
                 </thead>

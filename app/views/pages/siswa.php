@@ -278,6 +278,17 @@ $sortBy = in_array($sortBy, ['nama', 'current_semester', 'status_siswa'], true) 
 $sortDir = strtoupper($_GET['sort_dir'] ?? 'ASC');
 $sortDir = in_array($sortDir, ['ASC', 'DESC'], true) ? $sortDir : 'ASC';
 
+// Helper function untuk toggle sort
+$getSortLink = function($column, $label) use ($searchQuery, $sortBy, $sortDir, $perPage) {
+    $newDir = ($sortBy === $column && $sortDir === 'ASC') ? 'DESC' : 'ASC';
+    $icon = '';
+    if ($sortBy === $column) {
+        $icon = $sortDir === 'ASC' ? ' ↑' : ' ↓';
+    }
+    $url = "index.php?page=siswa&search=" . urlencode($searchQuery) . "&sort_by={$column}&sort_dir={$newDir}&per_page={$perPage}";
+    return "<a href=\"$url\" style=\"text-decoration: none; color: inherit; cursor: pointer;\">{$label}{$icon}</a>";
+};
+
 $where = '';
 $params = [];
 if ($searchQuery !== '') {
@@ -323,26 +334,13 @@ require dirname(__DIR__) . '/partials/header.php';
     <div class="card-body">
         <form method="get" class="row g-2 mb-3">
             <input type="hidden" name="page" value="siswa">
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari Nama/NIS/NISN..." value="<?= e($searchQuery) ?>">
             </div>
-            <div class="col-md-2">
-                <select name="sort_by" class="form-select form-select-sm">
-                    <option value="nama" <?= $sortBy === 'nama' ? 'selected' : '' ?>>Nama</option>
-                    <option value="current_semester" <?= $sortBy === 'current_semester' ? 'selected' : '' ?>>Semester</option>
-                    <option value="status_siswa" <?= $sortBy === 'status_siswa' ? 'selected' : '' ?>>Status</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select name="sort_dir" class="form-select form-select-sm">
-                    <option value="ASC" <?= $sortDir === 'ASC' ? 'selected' : '' ?>>↑ Naik</option>
-                    <option value="DESC" <?= $sortDir === 'DESC' ? 'selected' : '' ?>>↓ Turun</option>
-                </select>
-            </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <button type="submit" class="btn btn-success btn-sm w-100">Cari</button>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <a href="index.php?page=siswa" class="btn btn-outline-secondary btn-sm w-100">Reset</a>
             </div>
         </form>
@@ -350,7 +348,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <div class="row mb-2 align-items-center small">
             <div class="col-md-6 text-secondary">Total: <?= e(number_format($totalRecords)) ?> siswa <?php if ($totalPages > 1): ?>(Halaman <?= e((string) $page) ?> dari <?= e((string) $totalPages) ?>)<?php endif; ?></div>
             <div class="col-md-6 text-end">
-                <select name="per_page" id="perPageSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                <select id="perPageSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
                     <option value="20" <?= $perPage === 20 ? 'selected' : '' ?>>20 per halaman</option>
                     <option value="30" <?= $perPage === 30 ? 'selected' : '' ?>>30 per halaman</option>
                     <option value="50" <?= $perPage === 50 ? 'selected' : '' ?>>50 per halaman</option>
@@ -370,7 +368,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <div class="table-wrap">
             <table>
-                <thead><tr><th>NISN</th><th>Nama</th><th>Semester</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+                <thead><tr><th><?php echo $getSortLink('nisn', 'NISN'); ?></th><th><?php echo $getSortLink('nama', 'Nama'); ?></th><th><?php echo $getSortLink('current_semester', 'Semester'); ?></th><th><?php echo $getSortLink('status_siswa', 'Status'); ?></th><th class="text-end">Aksi</th></tr></thead>
                 <tbody>
                 <?php foreach ($siswa as $s): ?>
                     <tr>
@@ -429,6 +427,16 @@ require dirname(__DIR__) . '/partials/header.php';
                 </ul>
             </nav>
         <?php endif; ?>
+
+<script>
+document.getElementById('perPageSelect').addEventListener('change', function() {
+    const search = new URLSearchParams(window.location.search).get('search') || '';
+    const sortBy = new URLSearchParams(window.location.search).get('sort_by') || 'nama';
+    const sortDir = new URLSearchParams(window.location.search).get('sort_dir') || 'ASC';
+    const perPage = this.value;
+    window.location.href = `index.php?page=siswa&search=${encodeURIComponent(search)}&sort_by=${encodeURIComponent(sortBy)}&sort_dir=${encodeURIComponent(sortDir)}&per_page=${perPage}`;
+});
+</script>
 
 <div class="modal fade" id="modalTambahSiswa" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
