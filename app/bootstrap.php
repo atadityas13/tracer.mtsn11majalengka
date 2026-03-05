@@ -10,10 +10,11 @@ $root = dirname(__DIR__);
 if (file_exists($root . '/.env')) {
     $lines = file($root . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) {
+        $trimmed = trim($line);
+        if ($trimmed === '' || strpos($trimmed, '#') === 0 || strpos($trimmed, '=') === false) {
             continue;
         }
-        [$k, $v] = array_map('trim', explode('=', $line, 2));
+        [$k, $v] = array_map('trim', explode('=', $trimmed, 2));
         $_ENV[$k] = $v;
     }
 }

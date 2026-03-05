@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function app_config(string $key = null, mixed $default = null): mixed
+function app_config($key = null, $default = null)
 {
     $config = $GLOBALS['app_config'] ?? [];
     if ($key === null) {
@@ -26,7 +26,7 @@ function e(?string $value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-function redirect(string $url): never
+function redirect(string $url): void
 {
     header('Location: ' . $url);
     exit;
