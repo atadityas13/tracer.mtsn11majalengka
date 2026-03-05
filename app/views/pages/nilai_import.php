@@ -11,7 +11,7 @@ if (!function_exists('normalize_header')) {
     function normalize_header(string $value): string
     {
         $value = strtoupper(trim($value));
-        $value = str_replace(['.', '-', '/', "'", '''], ' ', $value);
+        $value = str_replace(['.', '-', '/', "'"], ' ', $value);
         $value = preg_replace('/\s+/', ' ', $value);
         return trim($value);
     }
