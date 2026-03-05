@@ -61,14 +61,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=ekspor-cetak');
         }
 
-        $maxSemesterAktif = (int) (db()->query("SELECT MAX(current_semester) m FROM siswa WHERE status_siswa='Aktif'")->fetch()['m'] ?? 0);
-        if ($maxSemesterAktif < 1 || $maxSemesterAktif > 5) {
+        $maxSemesterRaw = normalize_current_semester((int) (db()->query("SELECT MAX(current_semester) m FROM siswa WHERE status_siswa='Aktif'")->fetch()['m'] ?? 0));
+        if ($maxSemesterRaw < 1) {
             set_flash('error', 'Belum ada data angkatan aktif untuk diekspor.');
             redirect('index.php?page=ekspor-cetak');
         }
 
-        $stSiswa = db()->prepare("SELECT nisn, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester=:semester ORDER BY nama");
-        $stSiswa->execute(['semester' => $maxSemesterAktif]);
+        $maxSemesterAktif = $maxSemesterRaw >= 6 ? 5 : $maxSemesterRaw;
+        $isAkhir = $maxSemesterRaw >= 6;
+
+        if ($isAkhir) {
+            $stSiswa = db()->prepare("SELECT nisn, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester=6 ORDER BY nama");
+            $stSiswa->execute();
+        } else {
+            $stSiswa = db()->prepare("SELECT nisn, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester=:semester ORDER BY nama");
+            $stSiswa->execute(['semester' => $maxSemesterAktif]);
+        }
         $cohort = $stSiswa->fetchAll();
 
         if (count($cohort) === 0) {
@@ -112,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $line++;
         }
 
-        if ($maxSemesterAktif === 5) {
+        if ($maxSemesterRaw >= 6) {
             $stUam = db()->query("SELECT nu.nisn, m.nama_mapel, nu.nilai_angka
                                   FROM nilai_uam nu
                                   JOIN mapel m ON m.id = nu.mapel_id
@@ -185,8 +193,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $alumniList = db()->query('SELECT nisn, angkatan_lulus FROM alumni ORDER BY angkatan_lulus DESC, nisn')->fetchAll();
-$maxSemesterAktif = (int) (db()->query("SELECT MAX(current_semester) m FROM siswa WHERE status_siswa='Aktif'")->fetch()['m'] ?? 0);
-$maxSemesterAktif = ($maxSemesterAktif >= 1 && $maxSemesterAktif <= 5) ? $maxSemesterAktif : 0;
+$maxSemesterRaw = normalize_current_semester((int) (db()->query("SELECT MAX(current_semester) m FROM siswa WHERE status_siswa='Aktif'")->fetch()['m'] ?? 0));
+$maxSemesterAktif = $maxSemesterRaw >= 6 ? 5 : ($maxSemesterRaw >= 1 ? $maxSemesterRaw : 0);
+$maxSemesterLabel = $maxSemesterRaw >= 6 ? 'Akhir' : ($maxSemesterAktif > 0 ? (string) $maxSemesterAktif : '-');
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
@@ -222,8 +231,8 @@ require dirname(__DIR__) . '/partials/header.php';
         <p class="text-secondary mb-0">
             Berdasarkan current semester pada tahun ajaran aktif.
             <?php if ($maxSemesterAktif > 0): ?>
-                Angkatan aktif terdeteksi di semester <?= e((string) $maxSemesterAktif) ?>,
-                sehingga file berisi nilai semester 1 sampai <?= e((string) $maxSemesterAktif) ?><?= $maxSemesterAktif === 5 ? ' + UAM' : '' ?>.
+                Angkatan aktif terdeteksi di semester <?= e($maxSemesterLabel) ?>,
+                sehingga file berisi nilai semester 1 sampai <?= e((string) $maxSemesterAktif) ?><?= $maxSemesterRaw >= 6 ? ' + UAM' : '' ?>.
             <?php endif; ?>
         </p>
     </div>

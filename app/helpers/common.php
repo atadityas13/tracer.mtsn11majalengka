@@ -124,6 +124,34 @@ if (!function_exists('semester_upload_target')) {
     }
 }
 
+if (!function_exists('normalize_current_semester')) {
+    function normalize_current_semester($value): int
+    {
+        $text = strtoupper(trim((string) $value));
+        if ($text === 'AKHIR' || $text === 'UAM' || $text === 'UM') {
+            return 6;
+        }
+
+        $semester = (int) $value;
+        if ($semester < 1) {
+            return 1;
+        }
+        if ($semester > 6) {
+            return 6;
+        }
+
+        return $semester;
+    }
+}
+
+if (!function_exists('current_semester_label')) {
+    function current_semester_label($value): string
+    {
+        $semester = normalize_current_semester($value);
+        return $semester === 6 ? 'Akhir' : (string) $semester;
+    }
+}
+
 if (!function_exists('hitung_nilai_ijazah')) {
     function hitung_nilai_ijazah(float $rataRapor, float $uam): float
     {

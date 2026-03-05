@@ -69,7 +69,7 @@ if (!function_exists('download_template_siswa')) {
             ['1. Jangan ubah nama header pada baris pertama.'],
             ['2. Kolom wajib: NISN, NIS, Nama, Tempat Lahir, Tanggal Lahir.'],
             ['3. Format Tanggal Lahir disarankan YYYY-MM-DD (contoh: 2012-07-10).'],
-            ['4. Current Semester boleh 1-5. Jika kosong/invalid, otomatis jadi 1.'],
+            ['4. Current Semester boleh 1-5 atau Akhir. Jika kosong/invalid, otomatis jadi 1.'],
             ['5. Status Siswa: Aktif / Tidak Melanjutkan / Lulus (default Aktif).'],
             ['6. NISN dan NIS harus unik. Data duplikat akan dilewati saat impor.'],
         ], null, 'A1');
@@ -163,10 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $semesterRaw = ($semesterIndex !== null) ? (string) ($row[$semesterIndex] ?? '') : '';
-                $semester = (int) trim($semesterRaw);
-                if ($semester < 1 || $semester > 5) {
-                    $semester = 1;
-                }
+                $semester = normalize_current_semester($semesterRaw);
 
                 $statusRaw = ($statusIndex !== null) ? trim((string) ($row[$statusIndex] ?? '')) : '';
                 $allowedStatus = ['Aktif', 'Tidak Melanjutkan', 'Lulus'];
@@ -230,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'nama' => trim($_POST['nama'] ?? ''),
             'tempat' => trim($_POST['tempat_lahir'] ?? ''),
             'tgl' => $_POST['tgl_lahir'] ?? '',
-            'semester' => (int) ($_POST['current_semester'] ?? 1),
+            'semester' => normalize_current_semester($_POST['current_semester'] ?? 1),
             'status' => $_POST['status_siswa'] ?? 'Aktif',
         ]);
         set_flash('success', 'Data siswa ditambahkan.');
@@ -255,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'nama' => trim($_POST['nama'] ?? ''),
             'tempat' => trim($_POST['tempat_lahir'] ?? ''),
             'tgl' => $_POST['tgl_lahir'] ?? '',
-            'semester' => (int) ($_POST['current_semester'] ?? 1),
+            'semester' => normalize_current_semester($_POST['current_semester'] ?? 1),
             'status' => $_POST['status_siswa'] ?? 'Aktif',
             'nisn' => $nisn,
         ]);
@@ -306,7 +303,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     <tr>
                         <td><?= e($s['nisn']) ?></td>
                         <td><?= e($s['nama']) ?></td>
-                        <td><?= e((string)$s['current_semester']) ?></td>
+                        <td><?= e(current_semester_label($s['current_semester'])) ?></td>
                         <td><span class="badge text-bg-light border"><?= e($s['status_siswa']) ?></span></td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-1">
@@ -354,7 +351,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         <div class="col-md-2">
                             <label class="form-label">Current Semester</label>
                             <select name="current_semester" class="form-select">
-                                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">Akhir</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -449,9 +446,12 @@ require dirname(__DIR__) . '/partials/header.php';
                         <div class="col-md-2">
                             <label class="form-label">Current Semester</label>
                             <select name="current_semester" class="form-select">
-                                <?php for ($i = 1; $i <= 5; $i++): ?>
-                                    <option value="<?= $i ?>" <?= (int)$s['current_semester'] === $i ? 'selected' : '' ?>><?= $i ?></option>
-                                <?php endfor; ?>
+                                <option value="1" <?= normalize_current_semester($s['current_semester']) === 1 ? 'selected' : '' ?>>1</option>
+                                <option value="2" <?= normalize_current_semester($s['current_semester']) === 2 ? 'selected' : '' ?>>2</option>
+                                <option value="3" <?= normalize_current_semester($s['current_semester']) === 3 ? 'selected' : '' ?>>3</option>
+                                <option value="4" <?= normalize_current_semester($s['current_semester']) === 4 ? 'selected' : '' ?>>4</option>
+                                <option value="5" <?= normalize_current_semester($s['current_semester']) === 5 ? 'selected' : '' ?>>5</option>
+                                <option value="6" <?= normalize_current_semester($s['current_semester']) === 6 ? 'selected' : '' ?>>Akhir</option>
                             </select>
                         </div>
                         <div class="col-md-2">

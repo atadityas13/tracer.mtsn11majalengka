@@ -52,7 +52,7 @@ $lulus = db()->query("SELECT COUNT(*) c FROM siswa WHERE status_siswa='Lulus'")-
                 <thead><tr><th>Semester</th><th>Jumlah</th></tr></thead>
                 <tbody>
                 <?php foreach ($statsSemester as $row): ?>
-                    <tr><td><?= e((string) $row['current_semester']) ?></td><td><?= e((string) $row['total']) ?></td></tr>
+                    <tr><td><?= e(current_semester_label($row['current_semester'])) ?></td><td><?= e((string) $row['total']) ?></td></tr>
                 <?php endforeach; ?>
                 </tbody>
             </table>

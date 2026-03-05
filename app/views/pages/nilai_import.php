@@ -53,7 +53,7 @@ if (!function_exists('download_template_excel')) {
             [''],
             ['Catatan Semester:'],
             ['- Import Rapor: otomatis mengikuti current semester siswa pada semester aktif.'],
-            ['- Import UAM: diproses untuk siswa semester 5 saat semester aktif GENAP.'],
+            ['- Import UAM: diproses untuk siswa semester Akhir saat semester aktif GENAP.'],
         ], null, 'A1');
         $guideSheet->getColumnDimension('A')->setWidth(140);
 
@@ -217,9 +217,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            $semesterSiswa = (int) $siswa['current_semester'];
+            $semesterSiswa = normalize_current_semester($siswa['current_semester']);
             $isRaporTarget = in_array($semesterSiswa, $targetRapor, true);
-            $isUamTarget = $semesterAktif === 'GENAP' && $semesterSiswa === 5;
+            $isUamTarget = $semesterAktif === 'GENAP' && $semesterSiswa === 6;
 
             if ($action === 'import_rapor' && !$isRaporTarget) {
                 continue;
@@ -290,7 +290,7 @@ $mapelCount = (int) (db()->query('SELECT COUNT(*) c FROM mapel')->fetch()['c'] ?
 
 // Filter students by current_semester matching the selected semester filter
 if ($monitorSemester === 'UAM') {
-    $students = db()->query("SELECT nisn, nis, nama, current_semester FROM siswa WHERE status_siswa='Aktif' AND current_semester=5 ORDER BY nama")->fetchAll();
+    $students = db()->query("SELECT nisn, nis, nama, current_semester FROM siswa WHERE status_siswa='Aktif' AND current_semester = 6 ORDER BY nama")->fetchAll();
 } else {
     $stStudents = db()->prepare("SELECT nisn, nis, nama, current_semester FROM siswa WHERE status_siswa='Aktif' AND current_semester=:sem ORDER BY nama");
     $stStudents->execute(['sem' => (int)$monitorSemester]);
@@ -334,7 +334,7 @@ foreach ($students as $student) {
         'nisn' => $student['nisn'],
         'nis' => $student['nis'],
         'nama' => $student['nama'],
-        'current_semester' => (int) $student['current_semester'],
+        'current_semester' => current_semester_label($student['current_semester']),
         'entry_count' => $entryCount,
         'status_label' => $statusLabel,
         'uploaded' => $isUploaded,
@@ -413,7 +413,7 @@ require dirname(__DIR__) . '/partials/header.php';
                             <td><?= e($row['nisn']) ?></td>
                             <td><?= e($row['nis']) ?></td>
                             <td><?= e($row['nama']) ?></td>
-                            <td><?= e((string) $row['current_semester']) ?></td>
+                            <td><?= e($row['current_semester']) ?></td>
                             <td><?= e((string) $row['entry_count']) ?></td>
                             <td>
                                 <span class="badge <?= $row['uploaded'] ? 'text-bg-success' : 'text-bg-secondary' ?>">
@@ -490,7 +490,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 <?php if ($semesterAktif === 'GENAP'): ?>
                     <div class="card border-0 bg-light">
                         <div class="card-body">
-                            <h6 class="mb-2">Import Excel Nilai UAM (Semester 5)</h6>
+                            <h6 class="mb-2">Import Excel Nilai UAM (Semester Akhir)</h6>
                             <form method="post" enctype="multipart/form-data" class="row g-3">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="import_uam">

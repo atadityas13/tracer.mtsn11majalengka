@@ -1,7 +1,7 @@
 <?php
 $eligibleSql = "SELECT s.nisn, s.nama
 FROM siswa s
-WHERE s.status_siswa='Aktif' AND s.current_semester=5
+WHERE s.status_siswa='Aktif' AND s.current_semester = 6
 AND (
     SELECT COUNT(DISTINCT nr.semester) FROM nilai_rapor nr WHERE nr.nisn=s.nisn AND nr.semester BETWEEN 1 AND 5
 ) = 5
@@ -70,7 +70,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <h3 class="mb-0">Migrasi Kelulusan ke Alumni</h3>
     </div>
     <div class="card-body">
-        <div class="alert alert-info border mb-3">Syarat: siswa aktif semester 5, nilai rapor lengkap semester 1-5, dan memiliki nilai UAM.</div>
+        <div class="alert alert-info border mb-3">Syarat: siswa aktif semester Akhir, nilai rapor lengkap semester 1-5, dan memiliki nilai UAM.</div>
         <form method="post" class="row g-3 align-items-end" data-confirm="Proses migrasi kelulusan sekarang? Data siswa eligible akan dipindah ke alumni." data-confirm-title="Konfirmasi Migrasi">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="migrate">

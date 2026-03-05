@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $sqlNaik = "UPDATE siswa SET current_semester = CASE
                         WHEN current_semester < 5 THEN current_semester + 1
+                        WHEN current_semester = 5 THEN 6
                         ELSE current_semester END
                         WHERE status_siswa='Aktif' AND current_semester IN ($in)";
             $stmtNaik = db()->prepare($sqlNaik);
@@ -78,7 +79,7 @@ require dirname(__DIR__) . '/partials/header.php';
     </div>
     <div class="card-body">
         <div class="alert alert-warning border mb-3">
-            Proses ini akan mengunci nilai rapor semester target dan menaikkan current semester siswa aktif. Siswa status Tidak Melanjutkan tidak diproses.
+            Proses ini akan mengunci nilai rapor semester target dan menaikkan current semester siswa aktif. Setelah semester 5, siswa akan menjadi semester Akhir. Siswa status Tidak Melanjutkan tidak diproses.
         </div>
         <form method="post" data-confirm="Yakin finalisasi semester aktif? Nilai akan dikunci dan semester siswa aktif dinaikkan." data-confirm-title="Konfirmasi Finalisasi">
             <?= csrf_input() ?>
