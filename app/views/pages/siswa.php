@@ -536,13 +536,13 @@ require dirname(__DIR__) . '/partials/header.php';
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
                                                 <td class="text-center"><?= e(number_format($n['nilai_angka'], 0)) ?></td>
-                                                <td class="text-center"><?= ucwords(terbilang((int)$n['nilai_angka'])) ?></td>
+                                                <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                         <tr class="table-secondary fw-bold">
                                             <td>Rata-Rata</td>
                                             <td class="text-center"><?= e(number_format($rataRata, 2)) ?></td>
-                                            <td class="text-center"><?= ucwords(terbilang((int)$rataRata)) . ' Koma ' . ucwords(terbilang((int)(($rataRata - floor($rataRata)) * 100))) ?></td>
+                                            <td class="text-center"><?= ucwords(terbilang_nilai($rataRata)) ?></td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -586,13 +586,13 @@ require dirname(__DIR__) . '/partials/header.php';
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
                                                 <td class="text-center"><?= e(number_format($n['nilai_angka'], 0)) ?></td>
-                                                <td class="text-center"><?= ucwords(terbilang((int)$n['nilai_angka'])) ?></td>
+                                                <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                         <tr class="table-secondary fw-bold">
                                             <td>Rata-Rata</td>
                                             <td class="text-center"><?= e(number_format($rataRataUam, 2)) ?></td>
-                                            <td class="text-center"><?= ucwords(terbilang((int)$rataRataUam)) . ' Koma ' . ucwords(terbilang((int)(($rataRataUam - floor($rataRataUam)) * 100))) ?></td>
+                                            <td class="text-center"><?= ucwords(terbilang_nilai($rataRataUam)) ?></td>
                                         </tr>
                                     </tbody>
                                 </table>
