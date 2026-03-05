@@ -31,7 +31,7 @@ switch ($page) {
         require dirname(__DIR__) . '/app/views/pages/mapel.php';
         break;
     case 'siswa':
-        require_role(['admin']);
+        require_role(['admin', 'kurikulum']);
         require dirname(__DIR__) . '/app/views/pages/siswa.php';
         break;
     case 'data-nilai':
@@ -44,7 +44,7 @@ switch ($page) {
         require dirname(__DIR__) . '/app/views/pages/semester_control.php';
         break;
     case 'kelulusan':
-        require_role(['admin']);
+        require_role(['admin', 'kurikulum']);
         require dirname(__DIR__) . '/app/views/pages/kelulusan.php';
         break;
     case 'alumni':

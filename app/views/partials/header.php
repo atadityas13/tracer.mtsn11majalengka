@@ -29,7 +29,7 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users'], true);
                 <a class="sidebar-link <?= $page === 'dashboard' ? 'active' : '' ?>" href="index.php?page=dashboard">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
-                <?php if ($isAdmin): ?>
+                <?php if (in_array(($user['role'] ?? ''), ['admin', 'kurikulum'], true)): ?>
                     <a class="sidebar-link <?= $page === 'siswa' ? 'active' : '' ?>" href="index.php?page=siswa">
                         <i class="bi bi-person-vcard"></i> Data Siswa
                     </a>
@@ -37,7 +37,7 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users'], true);
                 <a class="sidebar-link <?= in_array($page, ['data-nilai', 'nilai-import'], true) ? 'active' : '' ?>" href="index.php?page=data-nilai">
                     <i class="bi bi-file-earmark-spreadsheet"></i> Data Nilai
                 </a>
-                <?php if ($isAdmin): ?>
+                <?php if (in_array(($user['role'] ?? ''), ['admin', 'kurikulum'], true)): ?>
                     <a class="sidebar-link <?= $page === 'kelulusan' ? 'active' : '' ?>" href="index.php?page=kelulusan">
                         <i class="bi bi-mortarboard"></i> Kelulusan
                     </a>
@@ -63,11 +63,11 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users'], true);
                         <a class="sidebar-link sidebar-sub <?= $page === 'mapel' ? 'active' : '' ?>" href="index.php?page=mapel">
                             <i class="bi bi-journal-bookmark"></i> Mapel
                         </a>
-                        <a class="sidebar-link sidebar-sub <?= $page === 'semester-control' ? 'active' : '' ?>" href="index.php?page=semester-control">
-                            <i class="bi bi-calendar2-week"></i> Semester
-                        </a>
                         <a class="sidebar-link sidebar-sub <?= $page === 'users' ? 'active' : '' ?>" href="index.php?page=users">
                             <i class="bi bi-people"></i> User
+                        </a>
+                        <a class="sidebar-link sidebar-sub <?= $page === 'semester-control' ? 'active' : '' ?>" href="index.php?page=semester-control">
+                            <i class="bi bi-calendar2-week"></i> Semester
                         </a>
                     </div>
                 <?php endif; ?>
