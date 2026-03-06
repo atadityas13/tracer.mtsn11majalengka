@@ -49,138 +49,210 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'leger') {
+    if ($action === 'ekspor_nilai') {
         if (!class_exists(Spreadsheet::class)) {
             set_flash('error', 'PhpSpreadsheet belum terpasang.');
             redirect('index.php?page=ekspor-cetak');
         }
 
-        $semester = (int) ($_POST['semester'] ?? 1);
-        if ($semester < 1 || $semester > 5) {
-            $semester = 1;
+        $semesterPilihan = (int) ($_POST['semester_target'] ?? 1);
+        $isAkhir = ($semesterPilihan === 6);
+        if ($semesterPilihan < 1 || $semesterPilihan > 6) {
+            $semesterPilihan = 1;
+            $isAkhir = false;
         }
-
-        $stmt = db()->prepare("SELECT s.nisn, s.nama, m.nama_mapel, nr.nilai_angka, nr.is_finalized
-                               FROM nilai_rapor nr
-                               JOIN siswa s ON s.nisn = nr.nisn
-                               JOIN mapel m ON m.id = nr.mapel_id
-                               WHERE nr.semester = :semester AND nr.tahun_ajaran = :ta
-                               ORDER BY s.nama, m.nama_mapel");
-        $stmt->execute(['semester' => $semester, 'ta' => $tahunAjaranAktif]);
-        $rows = $stmt->fetchAll();
-
-        $sheet = new Spreadsheet();
-        $active = $sheet->getActiveSheet();
-        $active->setTitle('Semester ' . $semester);
-        $active->fromArray(['NISN', 'Nama', 'Mapel', 'Nilai', 'Finalized'], null, 'A1');
-
-        $line = 2;
-        foreach ($rows as $r) {
-            $active->fromArray([
-                $r['nisn'],
-                $r['nama'],
-                $r['nama_mapel'],
-                (float) $r['nilai_angka'],
-                (int) $r['is_finalized'] === 1 ? 'Ya' : 'Belum',
-            ], null, 'A' . $line);
-            $line++;
-        }
-
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="export_semester_' . $semester . '_' . str_replace('/', '-', $tahunAjaranAktif) . '.xlsx"');
-        $writer = new Xlsx($sheet);
-        $writer->save('php://output');
-        exit;
-    }
-
-    if ($action === 'rekap_angkatan') {
-        if (!class_exists(Spreadsheet::class)) {
-            set_flash('error', 'PhpSpreadsheet belum terpasang.');
-            redirect('index.php?page=ekspor-cetak');
-        }
-
-        $maxSemesterRaw = normalize_current_semester((int) (db()->query("SELECT MAX(current_semester) m FROM siswa WHERE status_siswa='Aktif'")->fetch()['m'] ?? 0));
-        if ($maxSemesterRaw < 1) {
-            set_flash('error', 'Belum ada data angkatan aktif untuk diekspor.');
-            redirect('index.php?page=ekspor-cetak');
-        }
-
-        $maxSemesterAktif = $maxSemesterRaw >= 6 ? 5 : $maxSemesterRaw;
-        $isAkhir = $maxSemesterRaw >= 6;
-
         if ($isAkhir) {
-            $stSiswa = db()->prepare("SELECT nisn, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester=6 ORDER BY nama");
-            $stSiswa->execute();
-        } else {
-            $stSiswa = db()->prepare("SELECT nisn, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester=:semester ORDER BY nama");
-            $stSiswa->execute(['semester' => $maxSemesterAktif]);
+            $semesterPilihan = 5; // Akhir includes semesters 1-5
         }
-        $cohort = $stSiswa->fetchAll();
 
-        if (count($cohort) === 0) {
-            set_flash('error', 'Data angkatan untuk semester aktif tidak ditemukan.');
+        // Ambil siswa angkatan berdasarkan semester target (siswa yang current_semester >= target)
+        $stSiswa = db()->prepare("SELECT nisn, nis, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester >= :semester_target ORDER BY nama");
+        $stSiswa->execute(['semester_target' => $semesterPilihan]);
+        $angkatanSiswa = $stSiswa->fetchAll();
+
+        if (count($angkatanSiswa) === 0) {
+            set_flash('error', 'Tidak ada siswa aktif di semester ' . $semesterPilihan . ' ke atas.');
             redirect('index.php?page=ekspor-cetak');
         }
 
-        $cohortMap = [];
-        foreach ($cohort as $item) {
-            $cohortMap[$item['nisn']] = $item['nama'];
-        }
+        // Ambil daftar mapel kelompok A (semua mata pelajaran utama)
+        $stMapel = db()->query("SELECT id, nama_mapel FROM mapel WHERE kelompok='A' ORDER BY urutan");
+        $mapelList = $stMapel->fetchAll();
 
+        // Buat spreadsheet dengan tab per semester 1 sampai target
         $sheet = new Spreadsheet();
-        $active = $sheet->getActiveSheet();
-        $active->setTitle('Rekap Angkatan');
-        $active->fromArray(['NISN', 'Nama', 'Jenis', 'Semester', 'Mapel', 'Nilai'], null, 'A1');
+        $sheet->removeSheetByIndex(0); // Hapus sheet default
 
-        $line = 2;
-        $stRapor = db()->prepare("SELECT nr.nisn, nr.semester, m.nama_mapel, nr.nilai_angka
-                                 FROM nilai_rapor nr
-                                 JOIN mapel m ON m.id = nr.mapel_id
-                                 WHERE nr.tahun_ajaran=:ta AND nr.semester BETWEEN 1 AND :maxSemester
-                                 ORDER BY nr.nisn, nr.semester, m.nama_mapel");
-        $stRapor->execute([
-            'ta' => $tahunAjaranAktif,
-            'maxSemester' => $maxSemesterAktif,
-        ]);
+        for ($sem = 1; $sem <= $semesterPilihan; $sem++) {
+            $sheetSem = $sheet->createSheet();
+            $sheetSem->setTitle('Semester ' . $sem);
 
-        foreach ($stRapor->fetchAll() as $r) {
-            if (!isset($cohortMap[$r['nisn']])) {
-                continue;
+            // Header kolom: No, NISN, NIS, Nama Lengkap, [Mapel-mapel], RATA-RATA
+            $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
+            foreach ($mapelList as $m) {
+                $headerRow[] = $m['nama_mapel'];
             }
-            $active->fromArray([
-                $r['nisn'],
-                $cohortMap[$r['nisn']],
-                'RAPOR',
-                (string) $r['semester'],
-                $r['nama_mapel'],
-                (float) $r['nilai_angka'],
-            ], null, 'A' . $line);
-            $line++;
+            $headerRow[] = 'RATA-RATA';
+            $sheetSem->fromArray($headerRow, null, 'A1');
+
+            // Styling header (warna kuning background, bold text)
+            $lastCol = chr(65 + count($headerRow) - 1); // Convert 0-based to A,B,C...
+            $headerStyle = $sheetSem->getStyle('A1:' . $lastCol . '1');
+            $headerStyle->getFont()->setBold(true);
+            $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+
+            // Data siswa per semester
+            $siswaNo = 1;
+            $dataRowStart = 2; // Row 2 is first data row
+            foreach ($angkatanSiswa as $siswa) {
+                $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
+
+                // Ambil nilai rapor siswa di semester ini untuk semua mapel
+                $stNilai = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND tahun_ajaran=:ta");
+                $stNilai->execute([
+                    'nisn' => $siswa['nisn'],
+                    'semester' => $sem,
+                    'ta' => $tahunAjaranAktif,
+                ]);
+                $nilaiData = $stNilai->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+                // Isi nilai per mapel dalam urutan mapelList, dan hitung rata-rata
+                $nilaiValues = [];
+                foreach ($mapelList as $m) {
+                    $nilai = $nilaiData[$m['id']] ?? null;
+                    if ($nilai !== null) {
+                        $nilaiValues[] = (float) $nilai;
+                        $rowData[] = (float) $nilai;
+                    } else {
+                        $rowData[] = '';
+                    }
+                }
+
+                // Hitung rata-rata jika ada nilai
+                $rataRata = count($nilaiValues) > 0 ? round(array_sum($nilaiValues) / count($nilaiValues), 2) : '';
+                $rowData[] = $rataRata;
+
+                $sheetSem->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
+            }
+
+            // Auto-fit columns untuk readability
+            foreach ($sheetSem->getColumnIterator() as $column) {
+                $sheetSem->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            }
         }
 
-        if ($maxSemesterRaw >= 6) {
-            $stUam = db()->query("SELECT nu.nisn, m.nama_mapel, nu.nilai_angka
-                                  FROM nilai_uam nu
-                                  JOIN mapel m ON m.id = nu.mapel_id
-                                  ORDER BY nu.nisn, m.nama_mapel");
-            foreach ($stUam->fetchAll() as $u) {
-                if (!isset($cohortMap[$u['nisn']])) {
-                    continue;
+        // Tambahkan sheet UAM jika Akhir dipilih
+        if ($isAkhir) {
+            $sheetUam = $sheet->createSheet();
+            $sheetUam->setTitle('UAM (Akhir)');
+
+            // Header kolom untuk UAM
+            $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
+            foreach ($mapelList as $m) {
+                $headerRow[] = $m['nama_mapel'];
+            }
+            $sheetUam->fromArray($headerRow, null, 'A1');
+
+            // Styling header (warna kuning background, bold text)
+            $lastCol = chr(65 + count($headerRow) - 1);
+            $headerStyle = $sheetUam->getStyle('A1:' . $lastCol . '1');
+            $headerStyle->getFont()->setBold(true);
+            $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+
+            // Data UAM untuk siswa angkatan
+            $siswaNo = 1;
+            $dataRowStart = 2;
+            foreach ($angkatanSiswa as $siswa) {
+                $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
+
+                // Ambil nilai UAM siswa
+                $stUam = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_uam WHERE nisn=:nisn");
+                $stUam->execute(['nisn' => $siswa['nisn']]);
+                $nilaiUam = $stUam->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+                // Isi nilai UAM per mapel
+                foreach ($mapelList as $m) {
+                    $nilai = $nilaiUam[$m['id']] ?? '';
+                    $rowData[] = $nilai !== '' ? (float) $nilai : '';
                 }
-                $active->fromArray([
-                    $u['nisn'],
-                    $cohortMap[$u['nisn']],
-                    'UAM',
-                    'UAM',
-                    $u['nama_mapel'],
-                    (float) $u['nilai_angka'],
-                ], null, 'A' . $line);
-                $line++;
+
+                $sheetUam->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
+            }
+
+            // Auto-fit columns
+            foreach ($sheetUam->getColumnIterator() as $column) {
+                $sheetUam->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            }
+
+            // Tambahkan sheet Nilai Ijazah
+            $sheetIjazah = $sheet->createSheet();
+            $sheetIjazah->setTitle('Nilai Ijazah');
+
+            // Header kolom untuk Nilai Ijazah
+            $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
+            foreach ($mapelList as $m) {
+                $headerRow[] = $m['nama_mapel'];
+            }
+            $headerRow[] = 'RATA-RATA IJAZAH';
+            $sheetIjazah->fromArray($headerRow, null, 'A1');
+
+            // Styling header (warna kuning background, bold text)
+            $lastCol = chr(65 + count($headerRow) - 1);
+            $headerStyle = $sheetIjazah->getStyle('A1:' . $lastCol . '1');
+            $headerStyle->getFont()->setBold(true);
+            $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+
+            // Data Nilai Ijazah untuk siswa angkatan
+            // Formula: (rata_rapor * 0.6) + (nilai_uam * 0.4)
+            $siswaNo = 1;
+            $dataRowStart = 2;
+            foreach ($angkatanSiswa as $siswa) {
+                $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
+
+                // Ambil nilai rapor semester 5 siswa
+                $stRapor5 = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=5 AND tahun_ajaran=:ta");
+                $stRapor5->execute(['nisn' => $siswa['nisn'], 'ta' => $tahunAjaranAktif]);
+                $nilaiRapor5 = $stRapor5->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+                // Ambil nilai UAM siswa
+                $stUam = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_uam WHERE nisn=:nisn");
+                $stUam->execute(['nisn' => $siswa['nisn']]);
+                $nilaiUam = $stUam->fetchAll(\PDO::FETCH_KEY_PAIR);
+
+                // Hitung nilai ijazah per mapel
+                $nilaiIjazahValues = [];
+                foreach ($mapelList as $m) {
+                    $rapor5 = $nilaiRapor5[$m['id']] ?? null;
+                    $uam = $nilaiUam[$m['id']] ?? null;
+
+                    if ($rapor5 !== null && $uam !== null) {
+                        $nilaiIjazah = round(((float) $rapor5 * 0.6) + ((float) $uam * 0.4), 2);
+                        $nilaiIjazahValues[] = $nilaiIjazah;
+                        $rowData[] = $nilaiIjazah;
+                    } else {
+                        $rowData[] = '';
+                    }
+                }
+
+                // Hitung rata-rata ijazah
+                $rataIjazah = count($nilaiIjazahValues) > 0 ? round(array_sum($nilaiIjazahValues) / count($nilaiIjazahValues), 2) : '';
+                $rowData[] = $rataIjazah;
+
+                $sheetIjazah->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
+            }
+
+            // Auto-fit columns
+            foreach ($sheetIjazah->getColumnIterator() as $column) {
+                $sheetIjazah->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             }
         }
 
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="export_angkatan_sampai_semester_' . $maxSemesterAktif . '.xlsx"');
+        $filename = $isAkhir ? 'leger_nilai_akhir_' . str_replace('/', '-', $tahunAjaranAktif) . '.xlsx' : 'leger_nilai_sem' . $semesterPilihan . '_' . str_replace('/', '-', $tahunAjaranAktif) . '.xlsx';
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
         $writer = new Xlsx($sheet);
         $writer->save('php://output');
         exit;
@@ -231,59 +303,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $alumniList = db()->query('SELECT nisn, angkatan_lulus FROM alumni ORDER BY angkatan_lulus DESC, nisn')->fetchAll();
-$maxSemesterRaw = normalize_current_semester((int) (db()->query("SELECT MAX(current_semester) m FROM siswa WHERE status_siswa='Aktif'")->fetch()['m'] ?? 0));
-$maxSemesterAktif = $maxSemesterRaw >= 6 ? 5 : ($maxSemesterRaw >= 1 ? $maxSemesterRaw : 0);
-$maxSemesterLabel = $maxSemesterRaw >= 6 ? 'Akhir' : ($maxSemesterAktif > 0 ? (string) $maxSemesterAktif : '-');
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white border-0 pt-3">
-        <h3 class="mb-1">Ekspor Nilai Per Semester (Excel)</h3>
-        <p class="text-secondary mb-0">Ekspor nilai per semester pada tahun ajaran aktif: <?= e($tahunAjaranAktif) ?>.</p>
+        <h3 class="mb-1">Ekspor Leger Nilai (Excel)</h3>
+        <p class="text-secondary mb-0">
+            Ekspor nilai per semester untuk seluruh siswa angkatan pada tahun ajaran aktif: <?= e($tahunAjaranAktif) ?>.
+            Data akan diunduh dalam format Excel dengan tab per semester.
+        </p>
     </div>
     <div class="card-body">
         <form method="post" class="row g-3 align-items-end">
             <?= csrf_input() ?>
-            <input type="hidden" name="action" value="leger">
+            <input type="hidden" name="action" value="ekspor_nilai">
             <div class="col-md-6">
-                <label class="form-label">Semester</label>
-                <select name="semester" class="form-select">
+                <label class="form-label">Pilih Kelompok Semester</label>
+                <select name="semester_target" class="form-select">
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
                     <option value="4">4</option>
                     <option value="5">5</option>
+                    <option value="6">Akhir</option>
                 </select>
+                <small class="text-secondary d-block mt-2">
+                    Sistem akan mengekspor nilai semester 1 hingga semester yang dipilih 
+                    untuk semua siswa aktif pada semester itu ke atas.
+                </small>
             </div>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-success w-100">Download Excel</button>
             </div>
         </form>
-    </div>
-</div>
-
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white border-0 pt-3">
-        <h3 class="mb-1">Ekspor 1 Angkatan (Semester 1 s/d Current)</h3>
-        <p class="text-secondary mb-0">
-            Berdasarkan current semester pada tahun ajaran aktif.
-            <?php if ($maxSemesterAktif > 0): ?>
-                Angkatan aktif terdeteksi di semester <?= e($maxSemesterLabel) ?>,
-                sehingga file berisi nilai semester 1 sampai <?= e((string) $maxSemesterAktif) ?><?= $maxSemesterRaw >= 6 ? ' + UAM' : '' ?>.
-            <?php endif; ?>
-        </p>
-    </div>
-    <div class="card-body">
-        <?php if ($maxSemesterAktif === 0): ?>
-            <div class="alert alert-warning border mb-0">Belum ada data siswa aktif untuk menentukan angkatan.</div>
-        <?php else: ?>
-            <form method="post">
-                <?= csrf_input() ?>
-                <input type="hidden" name="action" value="rekap_angkatan">
-                <button type="submit" class="btn btn-primary">Download Ekspor Angkatan</button>
-            </form>
-        <?php endif; ?>
     </div>
 </div>
 

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS mapel (
     nama_mapel VARCHAR(120) NOT NULL,
     kelompok ENUM('A','B') NOT NULL,
     is_sub_pai TINYINT(1) NOT NULL DEFAULT 0,
+    urutan INT NOT NULL DEFAULT 0,
     UNIQUE KEY uniq_nama_mapel (nama_mapel)
 );
 
@@ -72,24 +73,24 @@ INSERT INTO pengaturan_akademik (tahun_ajaran, semester_aktif)
 SELECT '2025/2026', 'GANJIL'
 WHERE NOT EXISTS (SELECT 1 FROM pengaturan_akademik);
 
-INSERT INTO mapel (nama_mapel, kelompok, is_sub_pai)
+INSERT INTO mapel (nama_mapel, kelompok, is_sub_pai, urutan)
 VALUES
-("Al-Qur'an Hadis", 'A', 1),
-('Akidah Akhlak', 'A', 1),
-('Fikih', 'A', 1),
-('SKI', 'A', 1),
-('PPKn', 'A', 0),
-('Bahasa Indonesia', 'A', 0),
-('Bahasa Arab', 'A', 0),
-('Matematika', 'A', 0),
-('IPA', 'A', 0),
-('IPS', 'A', 0),
-('Bahasa Inggris', 'A', 0),
-('Seni Budaya', 'B', 0),
-('Penjasorkes', 'B', 0),
-('Prakarya/Informatika', 'B', 0),
-('Bahasa Daerah', 'B', 0)
-ON DUPLICATE KEY UPDATE nama_mapel=VALUES(nama_mapel);
+("Al-Qur'an Hadis", 'A', 1, 1),
+('Akidah Akhlak', 'A', 1, 2),
+('Fikih', 'A', 1, 3),
+('SKI', 'A', 1, 4),
+('PPKn', 'A', 0, 5),
+('Bahasa Indonesia', 'A', 0, 6),
+('Bahasa Arab', 'A', 0, 7),
+('Matematika', 'A', 0, 8),
+('IPA', 'A', 0, 9),
+('IPS', 'A', 0, 10),
+('Bahasa Inggris', 'A', 0, 11),
+('Seni Budaya', 'B', 0, 12),
+('Penjasorkes', 'B', 0, 13),
+('Prakarya/Informatika', 'B', 0, 14),
+('Bahasa Daerah', 'B', 0, 15)
+ON DUPLICATE KEY UPDATE nama_mapel=VALUES(nama_mapel), urutan=VALUES(urutan);
 
 INSERT INTO users (username, password, nama_lengkap, role)
 SELECT 'superadmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Admin', 'admin'
