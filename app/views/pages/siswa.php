@@ -94,9 +94,9 @@ if (!function_exists('download_template_siswa')) {
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Template Siswa');
 
-        $headers = ['NISN', 'NIS', 'Nama', 'Tempat Lahir', 'Tanggal Lahir', 'Current Semester', 'Status Siswa'];
+        $headers = ['NISN', 'NIS', 'Nama', 'Tempat Lahir', 'Tanggal Lahir', 'Kelas', 'Nomor Absen', 'Current Semester', 'Status Siswa'];
         $sheet->fromArray($headers, null, 'A1');
-        $sheet->fromArray(['0112345678', '240001', 'NAMA SISWA', 'MAJALENGKA', '2012-07-10', '1', 'Aktif'], null, 'A2');
+        $sheet->fromArray(['0112345678', '240001', 'NAMA SISWA', 'MAJALENGKA', '2012-07-10', 'VIII-A', '5', '1', 'Aktif'], null, 'A2');
 
         for ($index = 1; $index <= count($headers); $index++) {
             $sheet->getColumnDimensionByColumn($index)->setAutoSize(true);
@@ -108,10 +108,11 @@ if (!function_exists('download_template_siswa')) {
             ['PETUNJUK TEMPLATE SISWA'],
             ['1. Jangan ubah nama header pada baris pertama.'],
             ['2. Kolom wajib: NISN, NIS, Nama, Tempat Lahir, Tanggal Lahir.'],
-            ['3. Format Tanggal Lahir disarankan YYYY-MM-DD (contoh: 2012-07-10).'],
-            ['4. Current Semester boleh 1-5 atau Akhir. Jika kosong/invalid, otomatis jadi 1.'],
-            ['5. Status Siswa: Aktif / Tidak Melanjutkan / Lulus (default Aktif).'],
-            ['6. NISN dan NIS harus unik. Data duplikat akan dilewati saat impor.'],
+            ['3. Kolom Kelas dan Nomor Absen opsional (format: VIII-A, nomor 1-50).'],
+            ['4. Format Tanggal Lahir disarankan YYYY-MM-DD (contoh: 2012-07-10).'],
+            ['5. Current Semester boleh 1-5 atau Akhir. Jika kosong/invalid, otomatis jadi 1.'],
+            ['6. Status Siswa: Aktif / Tidak Melanjutkan / Lulus (default Aktif).'],
+            ['7. NISN dan NIS harus unik. Data duplikat akan dilewati saat impor.'],
         ], null, 'A1');
         $guideSheet->getColumnDimension('A')->setWidth(120);
 
@@ -173,8 +174,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $semesterIndex = $headerMap['CURRENT SEMESTER'] ?? null;
-        $statusIndex = $headerMap['STATUS SISWA'] ?? null;
+        $kelasIndex = $headerMap['KELAS'] ?? null;
+        $nomorAbsenIndex = $headerMap['NOMOR ABSEN'] ?? null;
 
         db()->beginTransaction();
         try {
@@ -183,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $invalid = 0;
 
             $checkStmt = db()->prepare('SELECT nisn, nis FROM siswa WHERE nisn=:nisn OR nis=:nis LIMIT 1');
-            $insertStmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, current_semester, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:semester,:status)');
+            $insertStmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:status)');
 
             for ($i = 1; $i < count($rows); $i++) {
                 $row = $rows[$i];
@@ -192,6 +193,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nama = trim((string) ($row[$headerMap['NAMA']] ?? ''));
                 $tempat = trim((string) ($row[$headerMap['TEMPAT LAHIR']] ?? ''));
                 $tgl = siswa_excel_date_to_mysql($row[$headerMap['TANGGAL LAHIR']] ?? null);
+                $kelas = ($kelasIndex !== null) ? trim((string) ($row[$kelasIndex] ?? '')) : '';
+                $nomorAbsen = ($nomorAbsenIndex !== null) ? (int) trim((string) ($row[$nomorAbsenIndex] ?? '')) : null;
 
                 if ($nisn === '' && $nis === '' && $nama === '') {
                     continue;
@@ -221,6 +224,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'nama' => $nama,
                     'tempat' => $tempat,
                     'tgl' => $tgl,
+                    'kelas' => $kelas !== '' ? $kelas : null,
+                    'nomor_absen' => $nomorAbsen ?? null,
                     'semester' => $semester,
                     'status' => $status,
                 ]);
@@ -260,13 +265,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $stmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, current_semester, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:semester,:status)');
+        $kelas = trim($_POST['kelas'] ?? '');
+        $nomorAbsen = $_POST['nomor_absen'] ?? null;
+        
+        $stmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:status)');
         $stmt->execute([
             'nisn' => $nisn,
             'nis' => $nis,
             'nama' => trim($_POST['nama'] ?? ''),
             'tempat' => trim($_POST['tempat_lahir'] ?? ''),
             'tgl' => $_POST['tgl_lahir'] ?? '',
+            'kelas' => $kelas !== '' ? $kelas : null,
+            'nomor_absen' => !empty($nomorAbsen) ? (int) $nomorAbsen : null,
             'semester' => normalize_current_semester($_POST['current_semester'] ?? 1),
             'status' => $_POST['status_siswa'] ?? 'Aktif',
         ]);
@@ -310,22 +320,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $searchQuery = trim($_GET['search'] ?? '');
+$kelasFilter = trim($_GET['kelas'] ?? '');
 $perPage = (int) ($_GET['per_page'] ?? 20);
 $perPage = in_array($perPage, [20, 30, 50, 100, 999999], true) ? $perPage : 20;
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$sortBy = $_GET['sort_by'] ?? 'nama';
-$sortBy = in_array($sortBy, ['nama', 'current_semester', 'status_siswa'], true) ? $sortBy : 'nama';
+$sortBy = $_GET['sort_by'] ?? 'kelas,nomor_absen,nama';
 $sortDir = strtoupper($_GET['sort_dir'] ?? 'ASC');
 $sortDir = in_array($sortDir, ['ASC', 'DESC'], true) ? $sortDir : 'ASC';
 
 // Helper function untuk toggle sort
-$getSortLink = function($column, $label) use ($searchQuery, $sortBy, $sortDir, $perPage) {
+$getSortLink = function($column, $label) use ($searchQuery, $kelasFilter, $sortBy, $sortDir, $perPage) {
     $newDir = ($sortBy === $column && $sortDir === 'ASC') ? 'DESC' : 'ASC';
     $icon = '';
     if ($sortBy === $column) {
         $icon = $sortDir === 'ASC' ? ' ↑' : ' ↓';
     }
-    $url = "index.php?page=siswa&search=" . urlencode($searchQuery) . "&sort_by={$column}&sort_dir={$newDir}&per_page={$perPage}";
+    $url = "index.php?page=siswa&search=" . urlencode($searchQuery) . "&kelas=" . urlencode($kelasFilter) . "&sort_by={$column}&sort_dir={$newDir}&per_page={$perPage}";
     return "<a href=\"$url\" style=\"text-decoration: none; color: inherit; cursor: pointer;\">{$label}{$icon}</a>";
 };
 
@@ -339,6 +349,12 @@ if ($searchQuery !== '') {
     $params['search3'] = $searchTerm;
 }
 
+if ($kelasFilter !== '') {
+    $where = ($where === '') ? 'WHERE' : $where . ' AND';
+    $where .= ' kelas = :kelas';
+    $params['kelas'] = $kelasFilter;
+}
+
 $countStmt = db()->prepare("SELECT COUNT(*) as total FROM siswa {$where}");
 $countStmt->execute($params);
 $totalRecords = (int) $countStmt->fetch()['total'];
@@ -346,10 +362,11 @@ $totalPages = $perPage >= 999999 ? 1 : ceil($totalRecords / $perPage);
 $page = min($page, max(1, $totalPages));
 $offset = ($page - 1) * $perPage;
 
-$sql = "SELECT * FROM siswa {$where} ORDER BY {$sortBy} {$sortDir} LIMIT {$offset}, {$perPage}";
+$sql = "SELECT * FROM siswa {$where} ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama ASC LIMIT {$offset}, {$perPage}";
 $stmt = db()->prepare($sql);
 $stmt->execute($params);
 $siswa = $stmt->fetchAll();
+$kelasOptions = db()->query('SELECT DISTINCT kelas FROM siswa WHERE kelas IS NOT NULL AND kelas != "" ORDER BY kelas')->fetchAll();
 $mapelList = db()->query('SELECT id, nama_mapel FROM mapel ORDER BY id')->fetchAll();
 $setting = setting_akademik();
 
@@ -377,13 +394,21 @@ require dirname(__DIR__) . '/partials/header.php';
     <div class="card-body">
         <form method="get" class="row g-2 mb-3">
             <input type="hidden" name="page" value="siswa">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari Nama/NIS/NISN..." value="<?= e($searchQuery) ?>">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <select name="kelas" class="form-select form-select-sm">
+                    <option value="">-- Semua Kelas --</option>
+                    <?php foreach ($kelasOptions as $k): ?>
+                        <option value="<?= e($k['kelas']) ?>" <?= $kelasFilter === $k['kelas'] ? 'selected' : '' ?>><?= e($k['kelas']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <button type="submit" class="btn btn-success btn-sm w-100">Cari</button>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <a href="index.php?page=siswa" class="btn btn-outline-secondary btn-sm w-100">Reset</a>
             </div>
         </form>
@@ -411,12 +436,14 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <div class="table-wrap">
             <table>
-                <thead><tr><th><?php echo $getSortLink('nisn', 'NISN'); ?></th><th><?php echo $getSortLink('nama', 'Nama'); ?></th><th><?php echo $getSortLink('current_semester', 'Semester'); ?></th><th><?php echo $getSortLink('status_siswa', 'Status'); ?></th><th class="text-end">Aksi</th></tr></thead>
+                <thead><tr><th><?php echo $getSortLink('nisn', 'NISN'); ?></th><th><?php echo $getSortLink('nama', 'Nama'); ?></th><th>Kelas</th><th>No. Absen</th><th><?php echo $getSortLink('current_semester', 'Semester'); ?></th><th><?php echo $getSortLink('status_siswa', 'Status'); ?></th><th class="text-end">Aksi</th></tr></thead>
                 <tbody>
                 <?php foreach ($siswa as $s): ?>
                     <tr>
                         <td><?= e($s['nisn']) ?></td>
                         <td><?= e($s['nama']) ?></td>
+                        <td><?= e($s['kelas'] ?? '-') ?></td>
+                        <td><?= e($s['nomor_absen'] !== null ? (string) $s['nomor_absen'] : '-') ?></td>
                         <td><?= e(current_semester_label($s['current_semester'])) ?></td>
                         <td><span class="badge text-bg-light border"><?= e($s['status_siswa']) ?></span></td>
                         <td class="text-end">
@@ -497,7 +524,8 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                         <div class="col-md-4"><label class="form-label">NIS</label><input type="text" class="form-control" name="nis" required></div>
                         <div class="col-md-4"><label class="form-label">Nama</label><input type="text" class="form-control" name="nama" required></div>
                         <div class="col-md-4"><label class="form-label">Tempat Lahir</label><input type="text" class="form-control" name="tempat_lahir" required></div>
-                        <div class="col-md-4"><label class="form-label">Tanggal Lahir</label><input type="date" class="form-control" name="tgl_lahir" required></div>
+                    <div class="col-md-6"><label class="form-label">Kelas</label><input type="text" class="form-control" name="kelas" placeholder="contoh: VIII-A"></div>
+                        <div class="col-md-6"><label class="form-label">Nomor Absen</label><input type="number" class="form-control" name="nomor_absen" min="1" max="50" placeholder="1-50"></div>
                         <div class="col-md-2">
                             <label class="form-label">Current Semester</label>
                             <select name="current_semester" class="form-select">

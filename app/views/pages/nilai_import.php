@@ -71,6 +71,8 @@ if (!function_exists('download_template_excel')) {
             '0112345678',
             'NAMA SISWA',
             'L',
+            'VIII-A',
+            '5',
         ], null, 'A2');
 
         $columnCount = count($headers);
@@ -84,11 +86,15 @@ if (!function_exists('download_template_excel')) {
             ['PETUNJUK PENGISIAN TEMPLATE NILAI'],
             ['1. Jangan ubah nama header di baris pertama.'],
             ['2. Kolom wajib minimal: NISN. Kolom No/NIS/Nama/JK opsional untuk referensi.'],
-            ['3. Isi nilai pada kolom mapel dengan rentang 70-100.'],
-            ['4. Biarkan kosong jika nilai mapel belum tersedia.'],
-            ['5. Nilai akan dipetakan otomatis berdasarkan header mapel (QH, AA, FIK, SKI, BAR, PP, BINDO, MTK, IPA, IPS, BING, PJOK, INFO, SBP, BSD).'],
-            ['6. NISN harus sesuai data siswa aktif di aplikasi.'],
-            ['7. Simpan file dalam format .xlsx sebelum upload.'],
+            ['3. Kolom Kelas dan Nomor Absen opsional - jika diisi akan update data siswa.'],
+            ['4. Isi nilai pada kolom mapel dengan rentang 70-100.'],
+            ['5. Biarkan kosong jika nilai mapel belum tersedia.'],
+            ['6. Nilai akan dipetakan otomatis berdasarkan header mapel (QH, AA, FIK, SKI, BAR, PP, BINDO, MTK, IPA, IPS, BING, PJOK, INFO, SBP, BSD).'],
+            ['7. NISN harus sesuai data siswa aktif di aplikasi.'],
+            ['8. Simpan file dalam format .xlsx sebelum upload.'],
+            [''],
+            ['Format Kelas: VIII-A, IX-B, dll (opsional)'],
+            ['Format Nomor Absen: angka 1-50 (opsional)'],
             [''],
             ['Catatan Semester:'],
             ['- Import Rapor: otomatis mengikuti current semester siswa pada semester aktif.'],
@@ -171,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=data-nilai');
         }
 
-        $headers = ['No', 'NIS', 'NISN', 'Nama', 'JK', 'QH', 'AA', 'FIK', 'SKI', 'BAR', 'PP', 'BINDO', 'MTK', 'IPA', 'IPS', 'BING', 'PJOK', 'INFO', 'SBP', 'BSD'];
+        $headers = ['No', 'NIS', 'NISN', 'Nama', 'JK', 'Kelas', 'Nomor Absen', 'QH', 'AA', 'FIK', 'SKI', 'BAR', 'PP', 'BINDO', 'MTK', 'IPA', 'IPS', 'BING', 'PJOK', 'INFO', 'SBP', 'BSD'];
 
         if ($action === 'download_template_rapor') {
             download_template_excel('template_import_rapor.xlsx', $headers);
@@ -201,6 +207,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $headerRow = $rows[0];
     $nisnIndex = null;
+    $kelasIndex = null;
+    $nomorAbsenIndex = null;
     $mapelColumns = [];
 
     foreach ($headerRow as $index => $header) {
@@ -209,8 +217,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             continue;
         }
 
+        // Deteksi kolom NISN
         if ($nisnIndex === null && in_array($headerKey, $nisnHeaderCandidates, true)) {
             $nisnIndex = (int) $index;
+            continue;
+        }
+
+        // Deteksi kolom Kelas
+        if ($kelasIndex === null && in_array($headerKey, ['KELAS'], true)) {
+            $kelasIndex = (int) $index;
+            continue;
+        }
+
+        // Deteksi kolom Nomor Absen
+        if ($nomorAbsenIndex === null && in_array($headerKey, ['NOMOR ABSEN', 'NO ABSEN', 'ABSEN'], true)) {
+            $nomorAbsenIndex = (int) $index;
             continue;
         }
 
@@ -254,6 +275,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $siswa = $stSiswa->fetch();
             if (!$siswa || $siswa['status_siswa'] !== 'Aktif') {
                 continue;
+            }
+
+            // Update kelas dan nomor_absen jika kolom ada dan terisi
+            $kelas = $kelasIndex !== null ? trim((string) ($row[$kelasIndex] ?? '')) : '';
+            $nomorAbsen = $nomorAbsenIndex !== null ? trim((string) ($row[$nomorAbsenIndex] ?? '')) : '';
+            
+            if ($kelas !== '' || $nomorAbsen !== '') {
+                $updateData = [];
+                if ($kelas !== '') {
+                    $updateData['kelas'] = $kelas;
+                }
+                if ($nomorAbsen !== '') {
+                    $updateData['nomor_absen'] = (int) $nomorAbsen;
+                }
+                
+                if (!empty($updateData)) {
+                    $setClauses = [];
+                    foreach ($updateData as $col => $val) {
+                        $setClauses[] = "$col = :$col";
+                    }
+                    $updateQuery = "UPDATE siswa SET " . implode(', ', $setClauses) . " WHERE nisn=:nisn";
+                    $stUpdate = db()->prepare($updateQuery);
+                    $updateData['nisn'] = $nisn;
+                    $stUpdate->execute($updateData);
+                }
             }
 
             $semesterSiswa = normalize_current_semester($siswa['current_semester']);

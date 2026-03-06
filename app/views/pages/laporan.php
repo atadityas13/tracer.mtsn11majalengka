@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Ambil siswa angkatan berdasarkan semester target (siswa yang current_semester >= target)
-        $stSiswa = db()->prepare("SELECT nisn, nis, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester >= :semester_target ORDER BY nama");
+        $stSiswa = db()->prepare("SELECT nisn, nis, nama FROM siswa WHERE status_siswa='Aktif' AND current_semester >= :semester_target ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama");
         $stSiswa->execute(['semester_target' => $semesterPilihan]);
         $angkatanSiswa = $stSiswa->fetchAll();
 

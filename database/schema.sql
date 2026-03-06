@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS siswa (
     nama VARCHAR(120) NOT NULL,
     tempat_lahir VARCHAR(80) NOT NULL,
     tgl_lahir DATE NOT NULL,
+    kelas VARCHAR(20) DEFAULT NULL,
+    nomor_absen TINYINT DEFAULT NULL,
     current_semester TINYINT NOT NULL DEFAULT 1,
     status_siswa ENUM('Aktif','Tidak Melanjutkan','Lulus') NOT NULL DEFAULT 'Aktif',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
