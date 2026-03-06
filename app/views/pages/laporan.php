@@ -55,8 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=ekspor-cetak');
         }
 
-        $semesterPilihan = (int) ($_POST['semester_target'] ?? 1);
-        $isAkhir = ($semesterPilihan === 6);
+        $semesterInput = (int) ($_POST['semester_target'] ?? 1);
+        $semesterPilihan = $semesterInput;
+        $isAkhir = ($semesterInput === 6);
         if ($semesterPilihan < 1 || $semesterPilihan > 6) {
             $semesterPilihan = 1;
             $isAkhir = false;
@@ -71,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $angkatanSiswa = $stSiswa->fetchAll();
 
         if (count($angkatanSiswa) === 0) {
-            set_flash('error', 'Tidak ada siswa aktif di semester ' . $semesterPilihan . ' ke atas.');
+            $semesterLabel = $isAkhir ? 'Akhir' : (string) $semesterPilihan;
+            set_flash('error', 'Tidak ada siswa aktif yang sudah mencapai semester ' . $semesterLabel . '.');
             redirect('index.php?page=ekspor-cetak');
         }
 
@@ -441,8 +443,8 @@ require dirname(__DIR__) . '/partials/header.php';
                     <option value="6">Akhir</option>
                 </select>
                 <small class="text-secondary d-block mt-2">
-                    Sistem akan mengekspor nilai semester 1 hingga semester yang dipilih 
-                    untuk semua siswa aktif pada semester itu ke atas.
+                    Sistem mengekspor nilai dari semester 1 sampai semester yang dipilih.
+                    Siswa yang disertakan adalah siswa aktif yang sudah mencapai semester pilihan (current_semester >= semester dipilih).
                 </small>
             </div>
             <div class="col-md-3">
