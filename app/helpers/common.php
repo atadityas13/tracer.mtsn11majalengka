@@ -158,7 +158,7 @@ if (!function_exists('enforce_csrf')) {
 if (!function_exists('setting_akademik')) {
     function setting_akademik(): array
     {
-        $stmt = db()->query("SELECT tahun_ajaran, semester_aktif FROM pengaturan_akademik ORDER BY id DESC LIMIT 1");
+        $stmt = db()->query("SELECT tahun_ajaran, semester_aktif FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1");
         $row = $stmt->fetch();
 
         return $row ?: ['tahun_ajaran' => date('Y') . '/' . (date('Y') + 1), 'semester_aktif' => 'GANJIL'];

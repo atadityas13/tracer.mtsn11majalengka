@@ -68,7 +68,9 @@ CREATE TABLE IF NOT EXISTS pengaturan_akademik (
     id INT AUTO_INCREMENT PRIMARY KEY,
     tahun_ajaran VARCHAR(20) NOT NULL,
     semester_aktif ENUM('GANJIL','GENAP') NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    is_aktif TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_ta_sem (tahun_ajaran, semester_aktif)
 );
 
 INSERT INTO pengaturan_akademik (tahun_ajaran, semester_aktif)
