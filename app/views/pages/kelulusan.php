@@ -57,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'migra
     enforce_csrf('kelulusan');
 
     $angkatan = (int) ($_POST['angkatan_lulus'] ?? date('Y'));
+    $tanggalKelulusan = $_POST['tanggal_kelulusan'] ?? date('Y-m-d');
 
     db()->beginTransaction();
     try {
@@ -86,13 +87,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'migra
                 ];
             }
 
-            $stmtInsert = db()->prepare('INSERT INTO alumni (nisn, nama, angkatan_lulus, data_ijazah_json) VALUES (:nisn,:nama,:angkatan,:json)
-                ON DUPLICATE KEY UPDATE nama=VALUES(nama), angkatan_lulus=VALUES(angkatan_lulus), data_ijazah_json=VALUES(data_ijazah_json)');
+            // Generate nomor surat dan verification token
+            $bulanCetak = date('m');
+            $tahunCetak = date('Y');
+            $nomorSurat = '       /Mts.10.89/PP.00.5/' . $bulanCetak . '/' . $tahunCetak;
+            $verificationToken = bin2hex(random_bytes(32));
+
+            $stmtInsert = db()->prepare('INSERT INTO alumni (nisn, nama, angkatan_lulus, tanggal_kelulusan, nomor_surat, data_ijazah_json, verification_token) 
+                VALUES (:nisn,:nama,:angkatan,:tgl_lulus,:nomor_surat,:json,:token)
+                ON DUPLICATE KEY UPDATE nama=VALUES(nama), angkatan_lulus=VALUES(angkatan_lulus), tanggal_kelulusan=VALUES(tanggal_kelulusan), 
+                    nomor_surat=VALUES(nomor_surat), data_ijazah_json=VALUES(data_ijazah_json), verification_token=VALUES(verification_token)');
             $stmtInsert->execute([
                 'nisn' => $s['nisn'],
                 'nama' => $s['nama'],
                 'angkatan' => $angkatan,
+                'tgl_lulus' => $tanggalKelulusan,
+                'nomor_surat' => $nomorSurat,
                 'json' => json_encode($detail, JSON_UNESCAPED_UNICODE),
+                'token' => $verificationToken,
             ]);
 
             $stmtDelete = db()->prepare('DELETE FROM siswa WHERE nisn=:nisn');
@@ -120,11 +132,15 @@ require dirname(__DIR__) . '/partials/header.php';
         <form method="post" class="row g-3 align-items-end" data-confirm="Proses migrasi kelulusan sekarang? Data siswa eligible akan dipindah ke alumni." data-confirm-title="Konfirmasi Migrasi">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="migrate">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">Tahun Angkatan Lulus</label>
                 <input type="number" class="form-control" name="angkatan_lulus" value="<?= e(date('Y')) ?>" required>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <label class="form-label">Tanggal Kelulusan</label>
+                <input type="date" class="form-control" name="tanggal_kelulusan" value="<?= e(date('Y-m-d')) ?>" required>
+            </div>
+            <div class="col-md-3">
                 <button type="submit" class="btn btn-success">Migrasi Sekarang</button>
             </div>
         </form>

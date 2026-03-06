@@ -385,51 +385,207 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    if ($action === 'transkrip') {
+    if ($action === 'transkrip' || $action === 'bulk_transkrip') {
         if (!class_exists(Dompdf::class)) {
             set_flash('error', 'Dompdf belum terpasang.');
             redirect('index.php?page=ekspor-cetak');
         }
 
-        $nisn = trim($_POST['nisn'] ?? '');
-        $stmt = db()->prepare('SELECT a.nisn, a.angkatan_lulus, a.data_ijazah_json, s.nama FROM alumni a LEFT JOIN siswa s ON s.nisn=a.nisn WHERE a.nisn=:nisn LIMIT 1');
-        $stmt->execute(['nisn' => $nisn]);
-        $alumni = $stmt->fetch();
+        // Ambil data ttd dari modal
+        $titimangsa = $_POST['titimangsa'] ?? date('d F Y');
+        $namaKepsek = $_POST['nama_kepsek'] ?? 'Kepala Madrasah';
+        $nipKepsek = $_POST['nip_kepsek'] ?? '';
 
-        if (!$alumni) {
-            set_flash('error', 'Data alumni tidak ditemukan.');
+        // Tentukan NISN yang akan dicetak
+        $nisnList = [];
+        if ($action === 'bulk_transkrip') {
+            $angkatanFilter = (int) ($_POST['angkatan'] ?? 0);
+            $stmtBulk = db()->prepare('SELECT nisn FROM alumni WHERE angkatan_lulus = :angkatan ORDER BY nama');
+            $stmtBulk->execute(['angkatan' => $angkatanFilter]);
+            $nisnList = array_column($stmtBulk->fetchAll(), 'nisn');
+        } else {
+            $nisnList = [trim($_POST['nisn'] ?? '')];
+        }
+
+        if (empty($nisnList)) {
+            set_flash('error', 'Tidak ada data alumni untuk dicetak.');
             redirect('index.php?page=ekspor-cetak');
         }
 
-        $detail = json_decode($alumni['data_ijazah_json'], true) ?: [];
-        $rows = '';
-        foreach ($detail as $d) {
-            $rows .= '<tr>'
-                . '<td>' . e($d['mapel']) . '</td>'
-                . '<td>' . e((string) $d['rata_rapor']) . '</td>'
-                . '<td>' . e((string) $d['nilai_uam']) . '</td>'
-                . '<td>' . e((string) $d['nilai_ijazah']) . '</td>'
-                . '<td>' . e($d['terbilang']) . '</td>'
-                . '</tr>';
+        $dompdf = new Dompdf();
+        $dompdf->set_option('isHtml5ParserEnabled', true);
+        $dompdf->set_option('isRemoteEnabled', true);
+        
+        $allHtml = '';
+        foreach ($nisnList as $idx => $nisn) {
+            $stmt = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
+                s.tempat_lahir, s.tanggal_lahir
+                FROM alumni a 
+                LEFT JOIN siswa s ON s.nisn = a.nisn
+                WHERE a.nisn=:nisn LIMIT 1');
+            $stmt->execute(['nisn' => $nisn]);
+            $alumni = $stmt->fetch();
+
+            if (!$alumni) {
+                continue;
+            }
+
+            $detail = json_decode($alumni['data_ijazah_json'], true) ?: [];
+            
+            // Generate QR Code URL
+            $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
+            $verifyUrl = $baseUrl . '/verify.php?token=' . urlencode($alumni['verification_token']);
+            $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
+
+            // Format tanggal kelulusan Indonesia
+            $bulanIndo = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+            $tglKelulusanFormat = '';
+            if ($alumni['tanggal_kelulusan']) {
+                $tglParts = explode('-', $alumni['tanggal_kelulusan']);
+                $tglKelulusanFormat = str_pad((int)$tglParts[2], 2, '0', STR_PAD_LEFT) . ' ' . $bulanIndo[(int)$tglParts[1]] . ' ' . $tglParts[0];
+            }
+            
+            // Format tempat tanggal lahir
+            $tempatTglLahir = '';
+            if ($alumni['tempat_lahir'] && $alumni['tanggal_lahir']) {
+                $tglLahirParts = explode('-', $alumni['tanggal_lahir']);
+                $tempatTglLahir = strtoupper($alumni['tempat_lahir']) . ', ' . (int)$tglLahirParts[2] . ' ' . $bulanIndo[(int)$tglLahirParts[1]] . ' ' . $tglLahirParts[0];
+            } elseif ($alumni['tempat_lahir']) {
+                $tempatTglLahir = strtoupper($alumni['tempat_lahir']);
+            }
+            
+            // Tahun Ajaran berdasarkan angkatan lulus
+            $tahunAjaran = '';
+            if ($alumni['angkatan_lulus']) {
+                $tahunLulus = (int)$alumni['angkatan_lulus'];
+                $tahunAjaran = ($tahunLulus - 1) . '/' . $tahunLulus;
+            }
+
+            $rows = '';
+            foreach ($detail as $d) {
+                $rows .= '<tr>
+                    <td style="padding: 8px; border: 1px solid #333;">' . htmlspecialchars($d['mapel']) . '</td>
+                    <td style="padding: 8px; border: 1px solid #333; text-align: center;">' . htmlspecialchars((string) $d['rata_rapor']) . '</td>
+                    <td style="padding: 8px; border: 1px solid #333; text-align: center;">' . htmlspecialchars((string) $d['nilai_uam']) . '</td>
+                    <td style="padding: 8px; border: 1px solid #333; text-align: center;"><strong>' . htmlspecialchars((string) $d['nilai_ijazah']) . '</strong></td>
+                    <td style="padding: 8px; border: 1px solid #333;">' . htmlspecialchars($d['terbilang']) . '</td>
+                </tr>';
+            }
+
+            $pageBreak = ($idx < count($nisnList) - 1) ? '<div style="page-break-after: always;"></div>' : '';
+
+            $allHtml .= '
+            <div style="font-family: Arial, sans-serif; font-size: 12px; padding: 20px;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="width: 80px; text-align: center; vertical-align: top;">
+                            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" style="width: 70px; height: 70px;">
+                        </td>
+                        <td style="text-align: center; vertical-align: top;">
+                            <h2 style="margin: 0; font-size: 16px; font-weight: bold;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
+                            <h3 style="margin: 5px 0; font-size: 14px; font-weight: bold;">MADRASAH TSANAWIYAH NEGERI 11 MAJALENGKA</h3>
+                            <p style="margin: 5px 0; font-size: 11px;">Jl. Raya Majalengka, Kabupaten Majalengka, Jawa Barat 45418</p>
+                            <p style="margin: 5px 0; font-size: 11px;">Telp: (0233) 8319182 | Email: mtsn11majalengka@gmail.com</p>
+                        </td>
+                        <td style="width: 80px;"></td>
+                    </tr>
+                </table>
+                
+                <hr style="border: 2px solid #000; margin: 10px 0;">
+                
+                <h3 style="text-align: center; margin: 20px 0; font-size: 14px; font-weight: bold; text-decoration: underline;">TRANSKRIP NILAI IJAZAH</h3>
+                
+                <table style="width: 100%; margin-bottom: 20px;">
+                    <tr>
+                        <td style="width: 40%;">Nomor Transkrip</td>
+                        <td style="width: 5%;">:</td>
+                        <td>' . htmlspecialchars($alumni['nomor_surat'] ?? '-') . '</td>
+                    </tr>
+                    <tr>
+                        <td>Tahun Ajaran</td>
+                        <td>:</td>
+                        <td>' . htmlspecialchars($tahunAjaran) . '</td>
+                    </tr>
+                </table>
+
+                <table style="width: 100%; margin-bottom: 20px;">
+                    <tr>
+                        <td style="width: 40%;">Satuan Pendidikan</td>
+                        <td style="width: 5%;">:</td>
+                        <td>MTsN 11 MAJALENGKA</td>
+                    </tr>
+                    <tr>
+                        <td>Nomor Pokok Sekolah Nasional</td>
+                        <td>:</td>
+                        <td>20278893</td>
+                    </tr>
+                    <tr>
+                        <td>Nama Lengkap</td>
+                        <td>:</td>
+                        <td>' . htmlspecialchars(strtoupper($alumni['nama'])) . '</td>
+                    </tr>
+                    <tr>
+                        <td>Tempat dan Tanggal Lahir</td>
+                        <td>:</td>
+                        <td>' . htmlspecialchars($tempatTglLahir) . '</td>
+                    </tr>
+                    <tr>
+                        <td>Nomor Induk Siswa Nasional</td>
+                        <td>:</td>
+                        <td>' . htmlspecialchars($alumni['nisn']) . '</td>
+                    </tr>
+                    <tr>
+                        <td>Tanggal Kelulusan</td>
+                        <td>:</td>
+                        <td>' . htmlspecialchars($tglKelulusanFormat) . '</td>
+                    </tr>
+                </table>
+
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #333;">
+                    <thead>
+                        <tr style="background-color: #f0f0f0;">
+                            <th style="padding: 10px; border: 1px solid #333; text-align: left;">Mata Pelajaran</th>
+                            <th style="padding: 10px; border: 1px solid #333; text-align: center; width: 10%;">Rata Rapor</th>
+                            <th style="padding: 10px; border: 1px solid #333; text-align: center; width: 10%;">Nilai UAM</th>
+                            <th style="padding: 10px; border: 1px solid #333; text-align: center; width: 10%;">Nilai Ijazah</th>
+                            <th style="padding: 10px; border: 1px solid #333; width: 25%;">Terbilang</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ' . $rows . '
+                    </tbody>
+                </table>
+
+                <table style="width: 100%;">
+                    <tr>
+                        <td style="width: 50%; vertical-align: top; text-align: center;">
+                            <img src="' . $qrCodeUrl . '" style="width: 100px; height: 100px; margin-top: 10px;"><br>
+                            <small style="font-size: 9px;">Scan untuk verifikasi</small>
+                        </td>
+                        <td style="width: 50%; vertical-align: top; text-align: center;">
+                            <p style="margin: 0;">Majalengka, ' . htmlspecialchars($titimangsa) . '</p>
+                            <p style="margin: 5px 0;">Kepala Madrasah,</p>
+                            <br><br><br>
+                            <p style="margin: 0; font-weight: bold; text-decoration: underline;">' . htmlspecialchars($namaKepsek) . '</p>
+                            <p style="margin: 0;">NIP. ' . htmlspecialchars($nipKepsek) . '</p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            ' . $pageBreak;
         }
 
-        $html = '<h2>Transkrip Nilai Ijazah</h2>'
-            . '<p>NISN: ' . e($alumni['nisn']) . '</p>'
-            . '<p>Angkatan: ' . e((string) $alumni['angkatan_lulus']) . '</p>'
-            . '<table border="1" cellspacing="0" cellpadding="6" width="100%">'
-            . '<thead><tr><th>Mapel</th><th>Rata Rapor</th><th>UAM</th><th>Nilai Ijazah</th><th>Terbilang</th></tr></thead>'
-            . '<tbody>' . $rows . '</tbody></table>';
-
-        $dompdf = new Dompdf();
-        $dompdf->loadHtml($html);
+        $dompdf->loadHtml($allHtml);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
-        $dompdf->stream('transkrip_' . $nisn . '.pdf', ['Attachment' => true]);
+        
+        $filename = $action === 'bulk_transkrip' ? 'transkrip_bulk_' . $angkatanFilter . '.pdf' : 'transkrip_' . $nisnList[0] . '.pdf';
+        $dompdf->stream($filename, ['Attachment' => true]);
         exit;
     }
 }
 
-$alumniList = db()->query('SELECT nisn, angkatan_lulus FROM alumni ORDER BY angkatan_lulus DESC, nisn')->fetchAll();
+$alumniList = db()->query('SELECT nisn, nama, angkatan_lulus FROM alumni ORDER BY angkatan_lulus DESC, nama')->fetchAll();
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
@@ -472,22 +628,162 @@ require dirname(__DIR__) . '/partials/header.php';
         <h3 class="mb-0">Cetak Transkrip Ijazah (PDF)</h3>
     </div>
     <div class="card-body">
-        <form method="post" class="row g-3 align-items-end">
-            <?= csrf_input() ?>
-            <input type="hidden" name="action" value="transkrip">
-            <div class="col-md-8">
-                <label class="form-label">Pilih Alumni (NISN)</label>
-                <select name="nisn" class="form-select" required>
-                    <option value="">-- pilih alumni --</option>
-                    <?php foreach ($alumniList as $a): ?>
-                        <option value="<?= e($a['nisn']) ?>"><?= e($a['nisn']) ?> - Angkatan <?= e((string) $a['angkatan_lulus']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-transkrip-individu" data-bs-toggle="tab" data-bs-target="#individu-tab" type="button">Cetak Individu</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-transkrip-bulk" data-bs-toggle="tab" data-bs-target="#bulk-tab" type="button">Cetak Bulk per Angkatan</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Tab Individu -->
+            <div class="tab-pane fade show active" id="individu-tab">
+                <form method="post" id="formTranskrip" class="row g-3 align-items-end">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="transkrip">
+                    <input type="hidden" name="titimangsa" id="titimangsa_value">
+                    <input type="hidden" name="nama_kepsek" id="nama_kepsek_value">
+                    <input type="hidden" name="nip_kepsek" id="nip_kepsek_value">
+                    
+                    <div class="col-md-8">
+                        <label class="form-label">Pilih Alumni (Ketik Nama atau NISN)</label>
+                        <select name="nisn" id="selectAlumni" class="form-select" required>
+                            <option value="">-- ketik untuk mencari --</option>
+                            <?php foreach ($alumniList as $a): ?>
+                                <option value="<?= e($a['nisn']) ?>"><?= e($a['nama']) ?> (<?= e($a['nisn']) ?>) - Angkatan <?= e((string) $a['angkatan_lulus']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-outline-success w-100" onclick="showModalTTD('formTranskrip')">
+                            <i class="bi bi-download"></i> Download PDF
+                        </button>
+                    </div>
+                </form>
             </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-outline-success w-100">Download PDF</button>
+
+            <!-- Tab Bulk -->
+            <div class="tab-pane fade" id="bulk-tab">
+                <form method="post" id="formBulkTranskrip" class="row g-3 align-items-end">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="action" value="bulk_transkrip">
+                    <input type="hidden" name="titimangsa" id="titimangsa_bulk">
+                    <input type="hidden" name="nama_kepsek" id="nama_kepsek_bulk">
+                    <input type="hidden" name="nip_kepsek" id="nip_kepsek_bulk">
+                    
+                    <div class="col-md-8">
+                        <label class="form-label">Pilih Angkatan</label>
+                        <select name="angkatan" class="form-select" required>
+                            <option value="">-- pilih angkatan --</option>
+                            <?php
+                            $angkatanStmt = db()->query('SELECT DISTINCT angkatan_lulus FROM alumni ORDER BY angkatan_lulus DESC');
+                            while ($row = $angkatanStmt->fetch()) {
+                                echo '<option value="' . e((string) $row['angkatan_lulus']) . '">' . e((string) $row['angkatan_lulus']) . '</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="showModalTTD('formBulkTranskrip')">
+                            <i class="bi bi-printer"></i> Cetak Semua
+                        </button>
+                    </div>
+                </form>
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-info-circle"></i> Cetak bulk akan menghasilkan satu file PDF berisi semua transkrip alumni pada angkatan yang dipilih.
+                </div>
             </div>
-        </form>
+        </div>
     </div>
 </div>
+
+<!-- Modal TTD -->
+<div class="modal fade" id="modalTTD" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Data Penandatangan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Titimangsa (Tanggal)</label>
+                    <input type="date" id="input_titimangsa" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                    <small class="form-text text-muted">Contoh: 15 Juni 2024</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nama Kepala Madrasah</label>
+                    <input type="text" id="input_nama_kepsek" class="form-control" placeholder="Nama Lengkap" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">NIP Kepala Madrasah</label>
+                    <input type="text" id="input_nip_kepsek" class="form-control" placeholder="NIP" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" onclick="submitWithTTD()">Cetak PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let targetFormId = '';
+
+function showModalTTD(formId) {
+    targetFormId = formId;
+    const modal = new bootstrap.Modal(document.getElementById('modalTTD'));
+    modal.show();
+}
+
+function submitWithTTD() {
+    const tgl = document.getElementById('input_titimangsa').value;
+    const nama = document.getElementById('input_nama_kepsek').value;
+    const nip = document.getElementById('input_nip_kepsek').value;
+
+    if (!tgl || !nama || !nip) {
+        alert('Semua field wajib diisi!');
+        return;
+    }
+
+    // Format tanggal ke Indonesia
+    const bulanIndo = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const parts = tgl.split('-');
+    const titimangsa = parseInt(parts[2]) + ' ' + bulanIndo[parseInt(parts[1])] + ' ' + parts[0];
+
+    const form = document.getElementById(targetFormId);
+    
+    if (targetFormId === 'formTranskrip') {
+        document.getElementById('titimangsa_value').value = titimangsa;
+        document.getElementById('nama_kepsek_value').value = nama;
+        document.getElementById('nip_kepsek_value').value = nip;
+    } else {
+        document.getElementById('titimangsa_bulk').value = titimangsa;
+        document.getElementById('nama_kepsek_bulk').value = nama;
+        document.getElementById('nip_kepsek_bulk').value = nip;
+    }
+
+    form.submit();
+}
+
+// Initialize search on alumni select
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAlumni = document.getElementById('selectAlumni');
+    if (selectAlumni) {
+        // Simple search filter
+        selectAlumni.addEventListener('focus', function() {
+            this.size = 10;
+        });
+        selectAlumni.addEventListener('blur', function() {
+            this.size = 1;
+        });
+        selectAlumni.addEventListener('change', function() {
+            this.size = 1;
+        });
+    }
+});
+</script>
 <?php require dirname(__DIR__) . '/partials/footer.php';
