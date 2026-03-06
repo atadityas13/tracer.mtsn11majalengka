@@ -259,7 +259,7 @@ if (!function_exists('hitung_tahun_ajaran_dari_angkatan')) {
      */
     function hitung_tahun_ajaran_dari_angkatan(string $tahunMasuk, int $currentSemester): string
     {
-        if (empty($tahunMasuk) || !str_contains($tahunMasuk, '/')) {
+        if (empty($tahunMasuk) || strpos($tahunMasuk, '/') === false) {
             return '';
         }
 
@@ -292,7 +292,7 @@ if (!function_exists('hitung_tahun_masuk_dari_semester')) {
      */
     function hitung_tahun_masuk_dari_semester(string $tahunAjaran, int $currentSemester): string
     {
-        if (empty($tahunAjaran) || !str_contains($tahunAjaran, '/')) {
+        if (empty($tahunAjaran) || strpos($tahunAjaran, '/') === false) {
             return '';
         }
 
