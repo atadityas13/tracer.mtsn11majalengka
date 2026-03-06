@@ -318,6 +318,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_flash('success', 'Data siswa berhasil dihapus.');
         redirect('index.php?page=siswa');
     }
+
+    if ($action === 'update_nilai') {
+        $nisn = trim($_POST['nisn'] ?? '');
+        $semester = (int) ($_POST['semester'] ?? 1);
+        $mapelId = (int) ($_POST['mapel_id'] ?? 0);
+        $nilaiAngka = $_POST['nilai_angka'] !== '' ? (float) $_POST['nilai_angka'] : null;
+
+        if ($nisn === '' || $mapelId <= 0) {
+            set_flash('error', 'Data tidak valid.');
+            redirect($_POST['redirect_url'] ?? 'index.php?page=siswa');
+        }
+
+        db()->beginTransaction();
+        try {
+            if ($semester === 99) {
+                // UAM
+                if ($nilaiAngka === null) {
+                    $stmt = db()->prepare('DELETE FROM nilai_uam WHERE nisn=:nisn AND mapel_id=:mapel_id');
+                    $stmt->execute(['nisn' => $nisn, 'mapel_id' => $mapelId]);
+                } else {
+                    $stmtCheck = db()->prepare('SELECT id FROM nilai_uam WHERE nisn=:nisn AND mapel_id=:mapel_id LIMIT 1');
+                    $stmtCheck->execute(['nisn' => $nisn, 'mapel_id' => $mapelId]);
+                    if ($stmtCheck->fetch()) {
+                        $stmt = db()->prepare('UPDATE nilai_uam SET nilai_angka=:nilai WHERE nisn=:nisn AND mapel_id=:mapel_id');
+                        $stmt->execute(['nilai' => $nilaiAngka, 'nisn' => $nisn, 'mapel_id' => $mapelId]);
+                    } else {
+                        $stmt = db()->prepare('INSERT INTO nilai_uam (nisn, mapel_id, nilai_angka) VALUES (:nisn,:mapel_id,:nilai)');
+                        $stmt->execute(['nisn' => $nisn, 'mapel_id' => $mapelId, 'nilai' => $nilaiAngka]);
+                    }
+                }
+            } else {
+                // Rapor
+                if ($nilaiAngka === null) {
+                    $stmt = db()->prepare('DELETE FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id AND tahun_ajaran=:ta');
+                    $stmt->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran']]);
+                } else {
+                    $stmtCheck = db()->prepare('SELECT id FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id AND tahun_ajaran=:ta LIMIT 1');
+                    $stmtCheck->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran']]);
+                    if ($stmtCheck->fetch()) {
+                        $stmt = db()->prepare('UPDATE nilai_rapor SET nilai_angka=:nilai WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id AND tahun_ajaran=:ta');
+                        $stmt->execute(['nilai' => $nilaiAngka, 'nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran']]);
+                    } else {
+                        $stmt = db()->prepare('INSERT INTO nilai_rapor (nisn, semester, mapel_id, tahun_ajaran, nilai_angka) VALUES (:nisn,:semester,:mapel_id,:ta,:nilai)');
+                        $stmt->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran'], 'nilai' => $nilaiAngka]);
+                    }
+                }
+            }
+
+            db()->commit();
+            set_flash('success', 'Nilai berhasil diperbarui.');
+        } catch (Throwable $e) {
+            db()->rollBack();
+            set_flash('error', 'Gagal update nilai: ' . $e->getMessage());
+        }
+
+        redirect($_POST['redirect_url'] ?? 'index.php?page=siswa');
+    }
 }
 
 $searchQuery = trim($_GET['search'] ?? '');
@@ -684,7 +741,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                 </ul>
                 <div class="tab-content" id="tabContent<?= e($s['nisn']) ?>">
                     <?php for ($sem = 1; $sem <= 5; $sem++): 
-                        $stNilai = db()->prepare('SELECT nr.nilai_angka, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem AND nr.tahun_ajaran=:ta ORDER BY m.id');
+                        $stNilai = db()->prepare('SELECT nr.id, nr.nilai_angka, nr.mapel_id, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem AND nr.tahun_ajaran=:ta ORDER BY m.id');
                         $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem, 'ta' => $setting['tahun_ajaran']]);
                         $nilaiRapor = $stNilai->fetchAll();
                         
@@ -715,7 +772,9 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                         <?php foreach ($nilaiRapor as $n): ?>
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
-                                                <td class="text-center"><?= e(number_format($n['nilai_angka'], 0)) ?></td>
+                                                <td class="text-center">
+                                                    <input type="number" step="0.01" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e(number_format($n['nilai_angka'], 2, '.', '')) ?>" id="nilai_<?= e($n['id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="<?= $sem ?>">
+                                                </td>
                                                 <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -734,7 +793,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                     <?php endfor; ?>
                     
                     <?php 
-                        $stUam = db()->prepare('SELECT nu.nilai_angka, m.nama_mapel FROM nilai_uam nu JOIN mapel m ON nu.mapel_id=m.id WHERE nu.nisn=:nisn ORDER BY m.id');
+                        $stUam = db()->prepare('SELECT nu.id, nu.nilai_angka, nu.mapel_id, m.nama_mapel FROM nilai_uam nu JOIN mapel m ON nu.mapel_id=m.id WHERE nu.nisn=:nisn ORDER BY m.id');
                         $stUam->execute(['nisn' => $s['nisn']]);
                         $nilaiUam = $stUam->fetchAll();
                         
@@ -765,7 +824,9 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                         <?php foreach ($nilaiUam as $n): ?>
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
-                                                <td class="text-center"><?= e(number_format($n['nilai_angka'], 0)) ?></td>
+                                                <td class="text-center">
+                                                    <input type="number" step="0.01" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e(number_format($n['nilai_angka'], 2, '.', '')) ?>" id="nilai_uam_<?= e($n['mapel_id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="99">
+                                                </td>
                                                 <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -785,10 +846,102 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-outline-warning d-none" id="batalBtn<?= e($s['nisn']) ?>" data-nisn="<?= e($s['nisn']) ?>">
+                    <i class="bi bi-x-circle me-1"></i>Batal
+                </button>
+                <button type="button" class="btn btn-success d-none" id="simpanBtn<?= e($s['nisn']) ?>" data-nisn="<?= e($s['nisn']) ?>">
+                    <i class="bi bi-check-circle me-1"></i>Simpan Perubahan
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Track nilai awal dan perubahan pada input nilai
+const nilaiChanges = {};
+
+document.addEventListener('change', function(e) {
+    // Track perubahan pada input nilai
+    if (e.target.matches('input[id^="nilai_"][type="number"]') || 
+        e.target.matches('input[id^="nilai_uam_"][type="number"]')) {
+        
+        const inputEl = e.target;
+        const nisn = inputEl.dataset.nisn;
+        
+        // Simpan perubahan ke object
+        if (!nilaiChanges[nisn]) {
+            nilaiChanges[nisn] = [];
+        }
+        
+        nilaiChanges[nisn].push({
+            nisn: nisn,
+            mapel_id: inputEl.dataset.mapelId,
+            semester: inputEl.dataset.semester,
+            nilai_angka: inputEl.value,
+            element: inputEl
+        });
+        
+        // Tampilkan tombol Simpan dan Batal
+        const simpanBtn = document.getElementById(`simpanBtn${nisn}`);
+        const batalBtn = document.getElementById(`batalBtn${nisn}`);
+        if (simpanBtn) simpanBtn.classList.remove('d-none');
+        if (batalBtn) batalBtn.classList.remove('d-none');
+    }
+});
+
+// Handler tombol Simpan
+document.addEventListener('click', function(e) {
+    if (e.target.matches('[id^="simpanBtn"]')) {
+        const nisn = e.target.dataset.nisn;
+        const changes = nilaiChanges[nisn] || [];
+        
+        if (changes.length === 0) {
+            alert('Tidak ada perubahan untuk disimpan.');
+            return;
+        }
+        
+        // Kirim semua perubahan
+        const promises = changes.map(change => {
+            const formData = new FormData();
+            formData.append('action', 'update_nilai');
+            formData.append('nisn', change.nisn);
+            formData.append('mapel_id', change.mapel_id);
+            formData.append('semester', change.semester);
+            formData.append('nilai_angka', change.nilai_angka);
+            formData.append('_csrf', document.querySelector('input[name="_csrf"]')?.value || '');
+            formData.append('redirect_url', window.location.href);
+            
+            return fetch('index.php?page=siswa', {
+                method: 'POST',
+                body: formData
+            });
+        });
+        
+        Promise.all(promises)
+            .then(() => {
+                // Clear changes dan refresh
+                nilaiChanges[nisn] = [];
+                setTimeout(() => location.reload(), 500);
+            })
+            .catch(err => {
+                alert('Gagal menyimpan perubahan: ' + err.message);
+                console.error('Error:', err);
+            });
+    }
+    
+    // Handler tombol Batal
+    if (e.target.matches('[id^="batalBtn"]')) {
+        const nisn = e.target.dataset.nisn;
+        
+        // Reload index untuk kembali ke nilai awal
+        nilaiChanges[nisn] = [];
+        window.location.hash = `modal-nilai-${nisn}`;
+        location.reload();
+    }
+});
+</script>
+
 <?php endforeach; ?>
 
 <?php require dirname(__DIR__) . '/partials/footer.php';
