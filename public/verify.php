@@ -13,7 +13,7 @@ if ($token === '') {
 }
 
 $stmt = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json,
-    s.tempat_lahir, s.tanggal_lahir
+    s.tempat_lahir, s.tgl_lahir
     FROM alumni a
     LEFT JOIN siswa s ON s.nisn = a.nisn
     WHERE a.verification_token = :token LIMIT 1');
@@ -37,8 +37,8 @@ if ($alumni['tanggal_kelulusan']) {
 
 // Format tempat tanggal lahir
 $tempatTglLahir = '';
-if ($alumni['tempat_lahir'] && $alumni['tanggal_lahir']) {
-    $tglLahirParts = explode('-', $alumni['tanggal_lahir']);
+if ($alumni['tempat_lahir'] && $alumni['tgl_lahir']) {
+    $tglLahirParts = explode('-', $alumni['tgl_lahir']);
     $tempatTglLahir = strtoupper($alumni['tempat_lahir']) . ', ' . (int)$tglLahirParts[2] . ' ' . $bulanIndo[(int)$tglLahirParts[1]] . ' ' . $tglLahirParts[0];
 } elseif ($alumni['tempat_lahir']) {
     $tempatTglLahir = strtoupper($alumni['tempat_lahir']);
