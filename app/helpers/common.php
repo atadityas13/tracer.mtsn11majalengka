@@ -243,3 +243,67 @@ if (!function_exists('terbilang_bulat')) {
         return (string) $angka;
     }
 }
+
+if (!function_exists('hitung_tahun_ajaran_dari_angkatan')) {
+    /**
+     * Hitung tahun ajaran berdasarkan tahun masuk (angkatan) dan semester saat ini
+     * 
+     * Logic:
+     * - Semester 1,2 = tahun ke-0 (tahun masuk)
+     * - Semester 3,4 = tahun ke-1
+     * - Semester 5,6 = tahun ke-2
+     * 
+     * @param string $tahunMasuk Format: "2023/2024"
+     * @param int $currentSemester 1-6
+     * @return string Format: "2024/2025"
+     */
+    function hitung_tahun_ajaran_dari_angkatan(string $tahunMasuk, int $currentSemester): string
+    {
+        if (empty($tahunMasuk) || !str_contains($tahunMasuk, '/')) {
+            return '';
+        }
+
+        // Parse tahun awal dari tahun_masuk (misal: "2023/2024" -> 2023)
+        [$tahunAwal, $tahunAkhir] = explode('/', $tahunMasuk);
+        $tahunAwal = (int) $tahunAwal;
+
+        // Hitung offset tahun berdasarkan semester
+        // Semester 1,2 -> offset 0
+        // Semester 3,4 -> offset 1
+        // Semester 5,6 -> offset 2
+        $offsetTahun = (int) floor(($currentSemester - 1) / 2);
+
+        // Hitung tahun ajaran target
+        $tahunAjaranAwal = $tahunAwal + $offsetTahun;
+        $tahunAjaranAkhir = $tahunAjaranAwal + 1;
+
+        return $tahunAjaranAwal . '/' . $tahunAjaranAkhir;
+    }
+}
+
+if (!function_exists('hitung_tahun_masuk_dari_semester')) {
+    /**
+     * Hitung tahun masuk (backfill) dari tahun ajaran saat ini dan semester
+     * Digunakan untuk auto-fill tahun_masuk pada data lama
+     * 
+     * @param string $tahunAjaran Format: "2024/2025"
+     * @param int $currentSemester 1-6
+     * @return string Format: "2023/2024"
+     */
+    function hitung_tahun_masuk_dari_semester(string $tahunAjaran, int $currentSemester): string
+    {
+        if (empty($tahunAjaran) || !str_contains($tahunAjaran, '/')) {
+            return '';
+        }
+
+        [$tahunAwal, $tahunAkhir] = explode('/', $tahunAjaran);
+        $tahunAwal = (int) $tahunAwal;
+
+        // Hitung mundur berdasarkan semester
+        $offsetTahun = (int) floor(($currentSemester - 1) / 2);
+        $tahunMasukAwal = $tahunAwal - $offsetTahun;
+        $tahunMasukAkhir = $tahunMasukAwal + 1;
+
+        return $tahunMasukAwal . '/' . $tahunMasukAkhir;
+    }
+}

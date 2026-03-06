@@ -163,6 +163,6 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
         <?php if ($flash): ?>
             <div id="swal-flash"
                  data-type="<?= e($flash['type'] ?? 'success') ?>"
-                 data-message="<?= e($flash['message'] ?? '') ?>"
+                 data-message="<?= $flash['message'] ?? '' ?>"
                  hidden></div>
         <?php endif; ?>

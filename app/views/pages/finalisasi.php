@@ -57,6 +57,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=finalisasi');
         }
 
+        // Validasi: cegah finalisasi duplikat
+        $sqlCekDuplikat = "SELECT id FROM finalisasi_riwayat 
+                           WHERE tahun_ajaran = ? AND semester_target = ?";
+        $paramsCekDuplikat = [$setting['tahun_ajaran'], $semesterTarget];
+        
+        if ($kelasFilter !== '') {
+            // Jika finalisasi untuk kelas tertentu, cek kelas yang sama
+            $sqlCekDuplikat .= " AND kelas_filter = ?";
+            $paramsCekDuplikat[] = $kelasFilter;
+        } else {
+            // Jika finalisasi semua kelas, cek apakah sudah ada finalisasi (dengan/tanpa filter kelas)
+            // Tidak perlu tambahan WHERE karena sudah cek tahun_ajaran + semester_target saja
+        }
+        
+        $stmtCekDuplikat = db()->prepare($sqlCekDuplikat);
+        $stmtCekDuplikat->execute($paramsCekDuplikat);
+        
+        if ($stmtCekDuplikat->fetch()) {
+            $msgKelas = $kelasFilter !== '' ? " untuk kelas $kelasFilter" : '';
+            set_flash('error', "Finalisasi semester $semesterTarget{$msgKelas} pada tahun ajaran {$setting['tahun_ajaran']} sudah pernah dilakukan. Silakan batalkan terlebih dahulu jika ingin finalisasi ulang.");
+            redirect('index.php?page=finalisasi');
+        }
+
         db()->beginTransaction();
         try {
             $in = implode(',', array_fill(0, count($nisnList), '?'));
@@ -149,6 +172,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $semesterTarget = (int) ($riwayat['semester_target'] ?? 0);
         if ($semesterTarget <= 0) {
             set_flash('error', 'Semester target pada riwayat tidak valid.');
+            redirect('index.php?page=finalisasi');
+        }
+
+        // Validasi: Cek apakah ada finalisasi lebih baru yang melibatkan siswa yang sama
+        $stmtCekSetelahnya = db()->prepare('SELECT id, tahun_ajaran, semester_target, kelas_filter, nisn_json, created_at
+                                            FROM finalisasi_riwayat
+                                            WHERE id > :current_id
+                                            ORDER BY id ASC');
+        $stmtCekSetelahnya->execute(['current_id' => $riwayatId]);
+        $finalisasiSetelahnya = [];
+        
+        foreach ($stmtCekSetelahnya->fetchAll() as $rowSetelah) {
+            $nisnSetelah = json_decode((string) $rowSetelah['nisn_json'], true);
+            if (!is_array($nisnSetelah)) continue;
+            
+            // Cek apakah ada overlap NISN
+            $overlap = array_intersect($nisnList, $nisnSetelah);
+            if (count($overlap) > 0) {
+                $finalisasiSetelahnya[] = [
+                    'id' => $rowSetelah['id'],
+                    'tahun_ajaran' => $rowSetelah['tahun_ajaran'],
+                    'semester_target' => $rowSetelah['semester_target'],
+                    'kelas_filter' => $rowSetelah['kelas_filter'],
+                    'created_at' => $rowSetelah['created_at'],
+                    'jumlah_overlap' => count($overlap)
+                ];
+            }
+        }
+        
+        // Jika ada finalisasi setelahnya yang overlap, tolak pembatalan
+        if (count($finalisasiSetelahnya) > 0) {
+            $pesanError = 'Tidak dapat membatalkan finalisasi ini. Anda harus membatalkan finalisasi berikut terlebih dahulu secara berurutan:<br><br>';
+            foreach ($finalisasiSetelahnya as $fs) {
+                $kelasInfo = $fs['kelas_filter'] ? ' Kelas ' . $fs['kelas_filter'] : ' Semua Kelas';
+                $tanggal = date('d M Y H:i', strtotime($fs['created_at']));
+                $pesanError .= '• <strong>ID #' . $fs['id'] . '</strong>: Finalisasi Semester ' . $fs['semester_target'] 
+                            . ' → ' . ($fs['semester_target'] < 5 ? ($fs['semester_target'] + 1) : 6)
+                            . ' (' . $fs['tahun_ajaran'] . ',' . $kelasInfo . ') - ' 
+                            . $fs['jumlah_overlap'] . ' siswa overlap - ' . $tanggal . '<br>';
+            }
+            $pesanError .= '<br>Pembatalan harus dilakukan dari finalisasi terbaru ke terlama untuk menjaga konsistensi data.';
+            set_flash('error', $pesanError);
             redirect('index.php?page=finalisasi');
         }
 

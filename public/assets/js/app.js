@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ...swalTheme,
         icon: flashType,
         title: flashTitleMap[flashType],
-        text: flashMessage,
+        html: flashMessage,
         confirmButtonText: 'OK',
       });
     }

@@ -442,7 +442,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stUpdateSiswa = db()->prepare('UPDATE siswa
                 SET kelas = CASE WHEN :kelas_set = 1 THEN :kelas ELSE kelas END,
-                    nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END
+                    nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END,
+                    tahun_masuk = CASE WHEN :tahun_masuk_set = 1 THEN :tahun_masuk ELSE tahun_masuk END
                 WHERE nisn=:nisn');
             $stCheckFinalizedRapor = db()->prepare('SELECT is_finalized FROM nilai_rapor
                 WHERE nisn=:nisn AND mapel_id=:mapel AND semester=:semester AND tahun_ajaran=:ta LIMIT 1');
@@ -458,7 +459,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $kelasSet = array_key_exists('kelas', $updateData) ? 1 : 0;
                 $absenSet = (array_key_exists('nomor_absen', $updateData) && $updateData['nomor_absen'] !== null && $updateData['nomor_absen'] !== '') ? 1 : 0;
-                if ($kelasSet === 0 && $absenSet === 0) {
+                $tahunMasukSet = array_key_exists('tahun_masuk', $updateData) && !empty($updateData['tahun_masuk']) ? 1 : 0;
+                
+                if ($kelasSet === 0 && $absenSet === 0 && $tahunMasukSet === 0) {
                     continue;
                 }
 
@@ -468,6 +471,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'kelas' => (string) ($updateData['kelas'] ?? ''),
                     'absen_set' => $absenSet,
                     'nomor_absen' => $absenSet ? (int) $updateData['nomor_absen'] : 0,
+                    'tahun_masuk_set' => $tahunMasukSet,
+                    'tahun_masuk' => $tahunMasukSet ? (string) $updateData['tahun_masuk'] : '',
                 ]);
                 $updatedSiswaCount++;
             }
@@ -596,7 +601,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $placeholders = implode(',', array_fill(0, count($chunk), '?'));
-                $sqlSiswa = "SELECT nisn, nama, current_semester, status_siswa, kelas, nomor_absen FROM siswa WHERE status_siswa='Aktif' AND nisn IN ($placeholders)";
+                $sqlSiswa = "SELECT nisn, nama, current_semester, status_siswa, kelas, nomor_absen, tahun_masuk FROM siswa WHERE status_siswa='Aktif' AND nisn IN ($placeholders)";
                 $stSiswaBatch = db()->prepare($sqlSiswa);
                 $stSiswaBatch->execute($chunk);
                 foreach ($stSiswaBatch->fetchAll() as $rowSiswa) {
@@ -661,12 +666,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nomorAbsenRaw = $nomorAbsenIndex !== null ? trim((string) ($row[$nomorAbsenIndex] ?? '')) : '';
             $nomorAbsenFinal = $nomorAbsenRaw !== '' ? (int) $nomorAbsenRaw : null;
 
+            // Auto-set tahun_masuk jika belum ada
+            $tahunMasukSiswa = $siswa['tahun_masuk'] ?? null;
+            $tahunMasukBaru = null;
+            if (empty($tahunMasukSiswa)) {
+                $tahunMasukBaru = hitung_tahun_masuk_dari_semester($setting['tahun_ajaran'], $semesterSiswa);
+            }
+
             $kelasLama = (string) ($siswa['kelas'] ?? '');
             $kelasBerubah = $kelasFinal !== '' && normalize_header($kelasFinal) !== normalize_header($kelasLama);
             $absenLama = $siswa['nomor_absen'] !== null ? (int) $siswa['nomor_absen'] : null;
             $absenBerubah = $nomorAbsenFinal !== null && $nomorAbsenFinal !== $absenLama;
 
-            if ($kelasBerubah || $absenBerubah) {
+            if ($kelasBerubah || $absenBerubah || $tahunMasukBaru !== null) {
                 if (!isset($studentUpdates[$nisn])) {
                     $studentUpdates[$nisn] = [];
                 }
@@ -675,6 +687,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if ($absenBerubah) {
                     $studentUpdates[$nisn]['nomor_absen'] = $nomorAbsenFinal;
+                }
+                if ($tahunMasukBaru !== null) {
+                    $studentUpdates[$nisn]['tahun_masuk'] = $tahunMasukBaru;
                 }
             }
 
@@ -768,10 +783,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $skipRange = 0;
         $skipFinalized = 0;
 
-        $stSiswa = db()->prepare('SELECT nisn, current_semester, status_siswa, kelas FROM siswa WHERE nisn=:nisn LIMIT 1');
+        $stSiswa = db()->prepare('SELECT nisn, current_semester, status_siswa, kelas, tahun_masuk FROM siswa WHERE nisn=:nisn LIMIT 1');
         $stUpdateSiswa = db()->prepare('UPDATE siswa
             SET kelas = CASE WHEN :kelas_set = 1 THEN :kelas ELSE kelas END,
-                nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END
+                nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END,
+                tahun_masuk = CASE WHEN :tahun_masuk_set = 1 THEN :tahun_masuk ELSE tahun_masuk END
             WHERE nisn=:nisn');
         $stCheckFinalizedRapor = db()->prepare('SELECT is_finalized FROM nilai_rapor
             WHERE nisn=:nisn AND mapel_id=:mapel AND semester=:semester AND tahun_ajaran=:ta LIMIT 1');
@@ -796,21 +812,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            // Update kelas dan nomor_absen jika kolom ada dan terisi
+            $semesterSiswa = normalize_current_semester($siswa['current_semester']);
+            
+            // Auto-set atau validasi tahun_masuk
+            $tahunMasukSiswa = $siswa['tahun_masuk'] ?? null;
+            $tahunMasukBaru = null;
+            
+            if (empty($tahunMasukSiswa)) {
+                // Jika belum ada tahun_masuk, hitung mundur dari tahun ajaran aktif
+                $tahunMasukBaru = hitung_tahun_masuk_dari_semester($setting['tahun_ajaran'], $semesterSiswa);
+            } else {
+                // Jika sudah ada tahun_masuk, validasi apakah tahun_ajaran sesuai
+                $tahunAjaranSeharusnya = hitung_tahun_ajaran_dari_angkatan($tahunMasukSiswa, $semesterSiswa);
+                
+                // Jika tidak sesuai, skip import dan catat warning (optional: bisa dibuat strict)
+                // Untuk sekarang kita toleransi, tapi bisa diubah jadi error jika perlu
+            }
+
+            // Update kelas, nomor_absen, dan tahun_masuk jika kolom ada dan terisi
             $kelas = $kelasIndex !== null ? trim((string) ($row[$kelasIndex] ?? '')) : '';
             $nomorAbsen = $nomorAbsenIndex !== null ? trim((string) ($row[$nomorAbsenIndex] ?? '')) : '';
             
-            if ($kelas !== '' || $nomorAbsen !== '') {
+            if ($kelas !== '' || $nomorAbsen !== '' || $tahunMasukBaru !== null) {
                 $stUpdateSiswa->execute([
                     'nisn' => $nisn,
                     'kelas_set' => $kelas !== '' ? 1 : 0,
                     'kelas' => $kelas,
                     'absen_set' => $nomorAbsen !== '' ? 1 : 0,
                     'nomor_absen' => $nomorAbsen !== '' ? (int) $nomorAbsen : 0,
+                    'tahun_masuk_set' => $tahunMasukBaru !== null ? 1 : 0,
+                    'tahun_masuk' => $tahunMasukBaru ?? '',
                 ]);
             }
-
-            $semesterSiswa = normalize_current_semester($siswa['current_semester']);
             $isRaporTarget = in_array($semesterSiswa, $targetRapor, true);
             $isUamTarget = $semesterAktif === 'GENAP' && $semesterSiswa === 6;
 
@@ -901,11 +934,37 @@ if (!in_array($monitorSemester, $monitorSemesterOptions, true)) {
 $mapelCount = (int) (db()->query('SELECT COUNT(*) c FROM mapel')->fetch()['c'] ?? 0);
 
 // Filter students by current_semester matching the selected semester filter
+// Dan filter berdasarkan tahun_masuk untuk memastikan hanya tampilkan siswa yang angkatannya sesuai
 if ($monitorSemester === 'UAM') {
-    $students = db()->query("SELECT nisn, nis, nama, current_semester, kelas, nomor_absen FROM siswa WHERE status_siswa='Aktif' AND current_semester = 6 ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama")->fetchAll();
+    $sql = "SELECT nisn, nis, nama, current_semester, kelas, nomor_absen, tahun_masuk FROM siswa WHERE status_siswa='Aktif' AND current_semester = 6";
+    
+    // Filter berdasarkan tahun_masuk - semester 6 seharusnya tahun masuk 2 tahun lalu
+    $expectedTahunMasuk = hitung_tahun_masuk_dari_semester($setting['tahun_ajaran'], 6);
+    if (!empty($expectedTahunMasuk)) {
+        $sql .= " AND (tahun_masuk = " . db()->quote($expectedTahunMasuk) . " OR tahun_masuk IS NULL)";
+    }
+    
+    $sql .= " ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama";
+    $students = db()->query($sql)->fetchAll();
 } else {
-    $stStudents = db()->prepare("SELECT nisn, nis, nama, current_semester, kelas, nomor_absen FROM siswa WHERE status_siswa='Aktif' AND current_semester=:sem ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama");
-    $stStudents->execute(['sem' => (int)$monitorSemester]);
+    $semesterInt = (int) $monitorSemester;
+    $expectedTahunMasuk = hitung_tahun_masuk_dari_semester($setting['tahun_ajaran'], $semesterInt);
+    
+    $sql = "SELECT nisn, nis, nama, current_semester, kelas, nomor_absen, tahun_masuk FROM siswa WHERE status_siswa='Aktif' AND current_semester=:sem";
+    
+    // Filter berdasarkan tahun_masuk untuk angkatan yang sesuai
+    if (!empty($expectedTahunMasuk)) {
+        $sql .= " AND (tahun_masuk = :tahun_masuk OR tahun_masuk IS NULL)";
+    }
+    
+    $sql .= " ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama";
+    
+    $stStudents = db()->prepare($sql);
+    $params = ['sem' => $semesterInt];
+    if (!empty($expectedTahunMasuk)) {
+        $params['tahun_masuk'] = $expectedTahunMasuk;
+    }
+    $stStudents->execute($params);
     $students = $stStudents->fetchAll();
 }
 

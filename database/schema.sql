@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS siswa (
     kelas VARCHAR(20) DEFAULT NULL,
     nomor_absen TINYINT DEFAULT NULL,
     current_semester TINYINT NOT NULL DEFAULT 1,
+    tahun_masuk VARCHAR(20) DEFAULT NULL COMMENT 'Tahun ajaran pertama kali masuk (angkatan)',
     status_siswa ENUM('Aktif','Tidak Melanjutkan','Lulus') NOT NULL DEFAULT 'Aktif',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
