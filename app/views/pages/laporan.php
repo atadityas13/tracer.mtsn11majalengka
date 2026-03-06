@@ -613,7 +613,6 @@ require dirname(__DIR__) . '/partials/header.php';
                 </select>
                 <small class="text-secondary d-block mt-2">
                     Sistem mengekspor nilai dari semester 1 sampai semester yang dipilih.
-                    Jika memilih Akhir, hanya siswa aktif dengan current_semester = 6 yang disertakan.
                 </small>
             </div>
             <div class="col-md-3">

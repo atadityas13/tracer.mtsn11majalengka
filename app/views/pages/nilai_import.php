@@ -444,8 +444,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 SET kelas = CASE WHEN :kelas_set = 1 THEN :kelas ELSE kelas END,
                     nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END
                 WHERE nisn=:nisn');
+            $stCheckFinalizedRapor = db()->prepare('SELECT is_finalized FROM nilai_rapor
+                WHERE nisn=:nisn AND mapel_id=:mapel AND semester=:semester AND tahun_ajaran=:ta LIMIT 1');
             $stInsertRapor = db()->prepare('INSERT INTO nilai_rapor (nisn, mapel_id, semester, tahun_ajaran, nilai_angka, is_finalized) VALUES (:nisn,:mapel,:semester,:ta,:nilai,0)
-                ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka), is_finalized=0');
+                ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka), is_finalized=is_finalized');
 
             $updatedSiswaCount = 0;
             $siswaUpdates = is_array($preview['student_updates'] ?? null) ? $preview['student_updates'] : [];
@@ -471,15 +473,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $processedCount = 0;
+            $skipFinalized = 0;
             foreach ($preview['entries'] as $entry) {
                 if (!is_array($entry)) {
                     continue;
                 }
 
+                $nisnEntry = (string) ($entry['nisn'] ?? '');
+                $mapelEntry = (int) ($entry['mapel_id'] ?? 0);
+                $semesterEntry = (int) ($entry['semester'] ?? 0);
+
+                $stCheckFinalizedRapor->execute([
+                    'nisn' => $nisnEntry,
+                    'mapel' => $mapelEntry,
+                    'semester' => $semesterEntry,
+                    'ta' => (string) $setting['tahun_ajaran'],
+                ]);
+                $existing = $stCheckFinalizedRapor->fetch();
+                if ($existing && (int) ($existing['is_finalized'] ?? 0) === 1) {
+                    $skipFinalized++;
+                    continue;
+                }
+
                 $stInsertRapor->execute([
-                    'nisn' => (string) ($entry['nisn'] ?? ''),
-                    'mapel' => (int) ($entry['mapel_id'] ?? 0),
-                    'semester' => (int) ($entry['semester'] ?? 0),
+                    'nisn' => $nisnEntry,
+                    'mapel' => $mapelEntry,
+                    'semester' => $semesterEntry,
                     'ta' => (string) $setting['tahun_ajaran'],
                     'nilai' => (float) ($entry['nilai_baru'] ?? 0),
                 ]);
@@ -491,7 +510,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $insertCount = (int) ($preview['meta']['insert_count'] ?? 0);
             $updateCount = (int) ($preview['meta']['update_count'] ?? 0);
-            set_flash('success', "Import RDM berhasil dikonfirmasi. Diproses: {$processedCount} nilai (insert: {$insertCount}, update: {$updateCount}), update biodata siswa: {$updatedSiswaCount}.");
+            set_flash('success', "Import RDM berhasil dikonfirmasi. Diproses: {$processedCount} nilai (insert: {$insertCount}, update: {$updateCount}), dilewati finalized: {$skipFinalized}, update biodata siswa: {$updatedSiswaCount}.");
         } catch (Throwable $e) {
             db()->rollBack();
             set_flash('error', 'Konfirmasi import gagal: ' . $e->getMessage());
@@ -747,14 +766,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $count = 0;
         $skipRange = 0;
+        $skipFinalized = 0;
 
         $stSiswa = db()->prepare('SELECT nisn, current_semester, status_siswa, kelas FROM siswa WHERE nisn=:nisn LIMIT 1');
         $stUpdateSiswa = db()->prepare('UPDATE siswa
             SET kelas = CASE WHEN :kelas_set = 1 THEN :kelas ELSE kelas END,
                 nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END
             WHERE nisn=:nisn');
+        $stCheckFinalizedRapor = db()->prepare('SELECT is_finalized FROM nilai_rapor
+            WHERE nisn=:nisn AND mapel_id=:mapel AND semester=:semester AND tahun_ajaran=:ta LIMIT 1');
         $stInsertRapor = db()->prepare('INSERT INTO nilai_rapor (nisn, mapel_id, semester, tahun_ajaran, nilai_angka, is_finalized) VALUES (:nisn,:mapel,:semester,:ta,:nilai,0)
-            ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka), is_finalized=0');
+            ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka), is_finalized=is_finalized');
         $stInsertUam = db()->prepare('INSERT INTO nilai_uam (nisn, mapel_id, nilai_angka) VALUES (:nisn,:mapel,:nilai)
             ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka)');
 
@@ -813,6 +835,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($action === 'import_rapor') {
+                    $stCheckFinalizedRapor->execute([
+                        'nisn' => $nisn,
+                        'mapel' => $mapelId,
+                        'semester' => $semesterSiswa,
+                        'ta' => (string) $setting['tahun_ajaran'],
+                    ]);
+                    $existing = $stCheckFinalizedRapor->fetch();
+                    if ($existing && (int) ($existing['is_finalized'] ?? 0) === 1) {
+                        $skipFinalized++;
+                        continue;
+                    }
+
                     $stInsertRapor->execute([
                         'nisn' => $nisn,
                         'mapel' => $mapelId,
@@ -836,7 +870,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         db()->commit();
-        set_flash('success', "Import selesai. Diproses: {$count}, dilewati (nilai di luar 70-100): {$skipRange}.");
+        set_flash('success', "Import selesai. Diproses: {$count}, dilewati (nilai di luar 70-100): {$skipRange}, dilewati finalized: {$skipFinalized}.");
     } catch (Throwable $e) {
         db()->rollBack();
         set_flash('error', 'Import gagal: ' . $e->getMessage());
