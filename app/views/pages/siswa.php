@@ -228,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'downl
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Data Siswa RDM');
     
-    $headers = ['NO ABSEN', 'NIS', 'NISN', 'NAMA', 'L/P', 'TTL', 'KELAS'];
+    $headers = ['NO ABSEN', 'NIS', 'NISN', 'NAMA', 'L/P', 'TTL', 'KELAS', 'SEMESTER'];
     foreach ($headers as $index => $header) {
         $sheet->setCellValueByColumnAndRow($index + 1, 1, $header);
         $sheet->getColumnDimensionByColumn($index)->setAutoSize(true);
@@ -238,9 +238,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'downl
     $sheet->getStyle('1:1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD3D3D3');
     
     $examples = [
-        ['1', '250001', '3134412140', 'AJENG SRI PUTRI', 'L', 'BANDUNG, 28 April 2013', 'VII-1'],
-        ['2', '250002', '3126316180', 'HAURA LATIFA', 'P', 'JAKARTA, 29 Agustus 2012', 'VII-1'],
-        ['3', '250003', '3129026954', 'CHIKA NUIA PUTRI', 'P', 'MAJALENGKA, 25 September 2012', 'VII-1'],
+        ['1', '250001', '3134412140', 'AJENG SRI PUTRI', 'L', 'BANDUNG, 28 April 2013', 'VII-1', '1'],
+        ['2', '250002', '3126316180', 'HAURA LATIFA', 'P', 'JAKARTA, 29 Agustus 2012', 'VII-1', '1'],
+        ['3', '250003', '3129026954', 'CHIKA NUIA PUTRI', 'P', 'MAJALENGKA, 25 September 2012', 'VIII-2', '3'],
     ];
     
     foreach ($examples as $rowIndex => $rowData) {
@@ -249,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'downl
         }
     }
     
-    $sheet->getStyle('A2:G4')->getAlignment()->setWrapText(true);
+    $sheet->getStyle('A2:H4')->getAlignment()->setWrapText(true);
     
     $guideSheet = $spreadsheet->createSheet();
     $guideSheet->setTitle('Panduan');
@@ -264,14 +264,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'downl
     $guideSheet->setCellValue('A8', '• L/P: Jenis Kelamin - L untuk Laki-laki, P untuk Perempuan (opsional)');
     $guideSheet->setCellValue('A9', '• TTL: Tempat Lahir, Tanggal Lahir - format "KOTA, DD Bulan YYYY" misalnya "BANDUNG, 28 April 2013" (wajib)');
     $guideSheet->setCellValue('A10', '• KELAS: Kelas siswa misalnya VII-1, VIII-2, IX-1 (wajib)');
+    $guideSheet->setCellValue('A11', '• SEMESTER: Semester siswa 1-6 atau Akhir (opsional, default 1 untuk siswa baru)');
     $guideSheet->setCellValue('A12', 'Catatan Penting:');
     $guideSheet->getStyle('A12')->getFont()->setBold(true);
     $guideSheet->setCellValue('A13', '• Data baru akan di-INSERT jika NISN belum ada di database');
     $guideSheet->setCellValue('A14', '• Data lama akan di-UPDATE jika NISN sudah terdaftar');
-    $guideSheet->setCellValue('A15', '• Baris dengan data kosong atau tidak lengkap akan di-SKIP');
-    $guideSheet->setCellValue('A16', '• Format tanggal harus tepat: DD Bulan YYYY (misalnya 28 April 2013)');
+    $guideSheet->setCellValue('A15', '• SEMESTER digunakan untuk hitung tahun masuk (angkatan) siswa - semester 1,2 = tahun ini; 3,4 = tahun lalu; 5,6 = 2 tahun lalu');
+    $guideSheet->setCellValue('A16', '• Baris dengan data kosong atau tidak lengkap akan di-SKIP');
+    $guideSheet->setCellValue('A17', '• Format tanggal harus tepat: DD Bulan YYYY (misalnya 28 April 2013)');
     $guideSheet->getColumnDimension('A')->setWidth(150);
-    $guideSheet->getStyle('A4:A16')->getAlignment()->setWrapText(true);
+    $guideSheet->getStyle('A4:A17')->getAlignment()->setWrapText(true);
     
     $filename = 'Template-Siswa-RDM-' . date('YmdHis') . '.xlsx';
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -303,9 +305,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=siswa');
         }
 
+        $setting = setting_akademik();
+        $tahunAjaranAktif = $setting['tahun_ajaran'];
+
         db()->beginTransaction();
         try {
-            $insertStmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:status)');
+            $insertStmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, tahun_masuk, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:tahun_masuk,:status)');
             $updateStmt = db()->prepare('UPDATE siswa SET nis=:nis, nama=:nama, tempat_lahir=:tempat, tgl_lahir=:tgl, kelas=:kelas, nomor_absen=:nomor_absen WHERE nisn=:nisn');
 
             foreach ($preview['entries'] as $entry) {
@@ -314,6 +319,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if (($entry['aksi'] ?? '') === 'INSERT') {
+                    // Auto-set tahun_masuk berdasarkan semester dari RDM (default 1 untuk siswa baru)
+                    $semesterSiswa = (int) ($entry['semester'] ?? 1);
+                    $tahunMasukSiswa = hitung_tahun_masuk_dari_semester($tahunAjaranAktif, $semesterSiswa);
+
                     $insertStmt->execute([
                         'nisn' => (string) ($entry['nisn'] ?? ''),
                         'nis' => (string) ($entry['nis'] ?? ''),
@@ -322,7 +331,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'tgl' => (string) ($entry['tgl'] ?? null),
                         'kelas' => ($entry['kelas'] ?? '') !== '' ? $entry['kelas'] : null,
                         'nomor_absen' => $entry['nomor_absen'] ?? null,
-                        'semester' => 1,
+                        'semester' => $semesterSiswa,
+                        'tahun_masuk' => $tahunMasukSiswa,
                         'status' => 'Aktif',
                     ]);
                 } elseif (($entry['aksi'] ?? '') === 'UPDATE') {
@@ -402,6 +412,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $semesterIndex = $headerMap['CURRENT SEMESTER'] ?? null;
         $statusIndex = $headerMap['STATUS SISWA'] ?? null;
 
+        $setting = setting_akademik();
+        $tahunAjaranAktif = $setting['tahun_ajaran'];
+
         db()->beginTransaction();
         try {
             $inserted = 0;
@@ -409,7 +422,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $invalid = 0;
 
             $checkStmt = db()->prepare('SELECT nisn, nis FROM siswa WHERE nisn=:nisn OR nis=:nis LIMIT 1');
-            $insertStmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:status)');
+            $insertStmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, tahun_masuk, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:tahun_masuk,:status)');
 
             for ($i = 1; $i < count($rows); $i++) {
                 $row = $rows[$i];
@@ -443,6 +456,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     continue;
                 }
 
+                // Auto-set tahun_masuk berdasarkan semester siswa
+                $tahunMasukSiswa = hitung_tahun_masuk_dari_semester($tahunAjaranAktif, $semester);
+
                 $insertStmt->execute([
                     'nisn' => $nisn,
                     'nis' => $nis,
@@ -452,6 +468,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'kelas' => $kelas !== '' ? $kelas : null,
                     'nomor_absen' => $nomorAbsen ?? null,
                     'semester' => $semester,
+                    'tahun_masuk' => $tahunMasukSiswa,
                     'status' => $status,
                 ]);
                 $inserted++;
@@ -512,6 +529,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $invalid = 0;
         $skipNisConflict = 0;
 
+        // Kolom SEMESTER opsional - default ke 1 jika tidak ada
+        $semesterIndex = $headerMap['SEMESTER'] ?? null;
+
         for ($i = 1; $i < count($rows); $i++) {
             $excelRow = $i + 1;
             $row = $rows[$i];
@@ -522,6 +542,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $kelas = trim((string) ($row[$headerMap['KELAS']] ?? ''));
             $nomorAbsenRaw = trim((string) ($row[$headerMap['NO ABSEN']] ?? ''));
             $nomorAbsen = $nomorAbsenRaw !== '' ? (int) $nomorAbsenRaw : null;
+            
+            // Parse semester - default 1 untuk siswa baru
+            $semesterRaw = $semesterIndex !== null ? trim((string) ($row[$semesterIndex] ?? '')) : '';
+            $semester = $semesterRaw !== '' ? normalize_current_semester($semesterRaw) : 1;
 
             if ($nisn === '' && $nis === '' && $nama === '' && $ttlRaw === '') {
                 continue;
@@ -562,6 +586,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'tgl' => $tgl,
                 'kelas' => $kelas !== '' ? $kelas : '-',
                 'nomor_absen' => $nomorAbsen ?? '-',
+                'semester' => $semester,
                 'aksi' => $aksi,
             ];
         }
@@ -611,8 +636,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $kelas = trim($_POST['kelas'] ?? '');
         $nomorAbsen = $_POST['nomor_absen'] ?? null;
+        $currentSemester = normalize_current_semester($_POST['current_semester'] ?? 1);
         
-        $stmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:status)');
+        // Auto-set tahun_masuk berdasarkan semester dan tahun ajaran aktif
+        $setting = setting_akademik();
+        $tahunMasukSiswa = hitung_tahun_masuk_dari_semester($setting['tahun_ajaran'], $currentSemester);
+        
+        $stmt = db()->prepare('INSERT INTO siswa (nisn, nis, nama, tempat_lahir, tgl_lahir, kelas, nomor_absen, current_semester, tahun_masuk, status_siswa) VALUES (:nisn,:nis,:nama,:tempat,:tgl,:kelas,:nomor_absen,:semester,:tahun_masuk,:status)');
         $stmt->execute([
             'nisn' => $nisn,
             'nis' => $nis,
@@ -621,7 +651,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'tgl' => $_POST['tgl_lahir'] ?? '',
             'kelas' => $kelas !== '' ? $kelas : null,
             'nomor_absen' => !empty($nomorAbsen) ? (int) $nomorAbsen : null,
-            'semester' => normalize_current_semester($_POST['current_semester'] ?? 1),
+            'semester' => $currentSemester,
+            'tahun_masuk' => $tahunMasukSiswa,
             'status' => $_POST['status_siswa'] ?? 'Aktif',
         ]);
         set_flash('success', 'Data siswa ditambahkan.');
@@ -829,6 +860,7 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                         <th>TTL</th>
                         <th>Kelas</th>
                         <th>No. Absen</th>
+                        <th style="width: 60px;">Sem</th>
                         <th style="width: 80px;">Aksi</th>
                     </tr>
                 </thead>
@@ -842,6 +874,7 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                         <td><small><?= e($entry['tempat'] ?? '-') ?>, <?= e($entry['tgl'] ?? '-') ?></small></td>
                         <td><?= e($entry['kelas'] ?? '-') ?></td>
                         <td><?= e($entry['nomor_absen'] ?? '-') ?></td>
+                        <td><span class="badge bg-secondary"><?= e(current_semester_label($entry['semester'] ?? 1)) ?></span></td>
                         <td>
                             <span class="badge <?= ($entry['aksi'] ?? '') === 'INSERT' ? 'bg-success' : (($entry['aksi'] ?? '') === 'UPDATE' ? 'bg-warning text-dark' : 'bg-secondary') ?>">
                                 <?= e($entry['aksi'] ?? 'SKIP') ?>
@@ -1099,10 +1132,10 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                     <div class="col-md-12">
                         <small class="text-secondary d-block mb-2">
                             <strong>Format Kolom yang Didukung:</strong><br>
-                            NO ABSEN, NIS, NISN, NAMA, L/P, TTL, KELAS
+                            NO ABSEN, NIS, NISN, NAMA, L/P, TTL, KELAS, SEMESTER (opsional)
                         </small>
                         <small class="text-secondary d-block">
-                            <strong>Catatan:</strong> NISN digunakan sebagai anchor untuk UPDATE otomatis jika siswa sudah ada di database. Baris dengan data wajib yang kosong akan diskip.
+                            <strong>Catatan:</strong> NISN digunakan sebagai anchor untuk UPDATE otomatis jika siswa sudah ada di database. Kolom SEMESTER opsional (1-6/Akhir) - jika kosong default 1 untuk siswa baru. Baris dengan data wajib yang kosong akan diskip.
                         </small>
                     </div>
                 </div>
