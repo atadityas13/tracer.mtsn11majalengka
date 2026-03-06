@@ -382,7 +382,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         db()->beginTransaction();
         try {
-            $stUpdateSiswa = null;
+            $stUpdateSiswa = db()->prepare('UPDATE siswa
+                SET kelas = CASE WHEN :kelas_set = 1 THEN :kelas ELSE kelas END,
+                    nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END
+                WHERE nisn=:nisn');
             $stInsertRapor = db()->prepare('INSERT INTO nilai_rapor (nisn, mapel_id, semester, tahun_ajaran, nilai_angka, is_finalized) VALUES (:nisn,:mapel,:semester,:ta,:nilai,0)
                 ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka), is_finalized=0');
 
@@ -393,26 +396,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     continue;
                 }
 
-                $setClauses = [];
-                $params = ['nisn' => (string) $nisn];
-
-                if (array_key_exists('kelas', $updateData)) {
-                    $setClauses[] = 'kelas=:kelas';
-                    $params['kelas'] = (string) $updateData['kelas'];
-                }
-
-                if (array_key_exists('nomor_absen', $updateData) && $updateData['nomor_absen'] !== null && $updateData['nomor_absen'] !== '') {
-                    $setClauses[] = 'nomor_absen=:nomor_absen';
-                    $params['nomor_absen'] = (int) $updateData['nomor_absen'];
-                }
-
-                if (count($setClauses) === 0) {
+                $kelasSet = array_key_exists('kelas', $updateData) ? 1 : 0;
+                $absenSet = (array_key_exists('nomor_absen', $updateData) && $updateData['nomor_absen'] !== null && $updateData['nomor_absen'] !== '') ? 1 : 0;
+                if ($kelasSet === 0 && $absenSet === 0) {
                     continue;
                 }
 
-                $updateQuery = 'UPDATE siswa SET ' . implode(', ', $setClauses) . ' WHERE nisn=:nisn';
-                $stUpdateSiswa = db()->prepare($updateQuery);
-                $stUpdateSiswa->execute($params);
+                $stUpdateSiswa->execute([
+                    'nisn' => (string) $nisn,
+                    'kelas_set' => $kelasSet,
+                    'kelas' => (string) ($updateData['kelas'] ?? ''),
+                    'absen_set' => $absenSet,
+                    'nomor_absen' => $absenSet ? (int) $updateData['nomor_absen'] : 0,
+                ]);
                 $updatedSiswaCount++;
             }
 
@@ -490,8 +486,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'preview_rapor_rdm') {
-        $stSiswa = db()->prepare('SELECT nisn, nama, current_semester, status_siswa, kelas, nomor_absen FROM siswa WHERE nisn=:nisn LIMIT 1');
-        $stNilaiRapor = db()->prepare('SELECT nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND mapel_id=:mapel AND semester=:semester AND tahun_ajaran=:ta LIMIT 1');
+        $nisnFromFile = [];
+        foreach ($rows as $i => $row) {
+            if ($i < $dataStartRow) {
+                continue;
+            }
+            $nisnCandidate = trim((string) ($row[$nisnIndex] ?? ''));
+            if ($nisnCandidate !== '') {
+                $nisnFromFile[$nisnCandidate] = true;
+            }
+        }
+
+        $siswaByNisn = [];
+        $nisnList = array_keys($nisnFromFile);
+        if (count($nisnList) > 0) {
+            $chunkSize = 500;
+            for ($offset = 0; $offset < count($nisnList); $offset += $chunkSize) {
+                $chunk = array_slice($nisnList, $offset, $chunkSize);
+                if (count($chunk) === 0) {
+                    continue;
+                }
+
+                $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                $sqlSiswa = "SELECT nisn, nama, current_semester, status_siswa, kelas, nomor_absen FROM siswa WHERE status_siswa='Aktif' AND nisn IN ($placeholders)";
+                $stSiswaBatch = db()->prepare($sqlSiswa);
+                $stSiswaBatch->execute($chunk);
+                foreach ($stSiswaBatch->fetchAll() as $rowSiswa) {
+                    $siswaByNisn[(string) $rowSiswa['nisn']] = $rowSiswa;
+                }
+            }
+        }
+
+        $stNilaiBySemester = db()->prepare('SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND tahun_ajaran=:ta');
+        $nilaiCache = [];
 
         $entries = [];
         $studentUpdates = [];
@@ -516,9 +543,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            $stSiswa->execute(['nisn' => $nisn]);
-            $siswa = $stSiswa->fetch();
-            if (!$siswa || ($siswa['status_siswa'] ?? '') !== 'Aktif') {
+            $siswa = $siswaByNisn[$nisn] ?? null;
+            if (!$siswa) {
                 $skipNoSiswa++;
                 continue;
             }
@@ -565,14 +591,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     continue;
                 }
 
-                $stNilaiRapor->execute([
-                    'nisn' => $nisn,
-                    'mapel' => $mapelId,
-                    'semester' => $semesterSiswa,
-                    'ta' => $setting['tahun_ajaran'],
-                ]);
-                $existing = $stNilaiRapor->fetch();
-                $nilaiLama = $existing ? (float) $existing['nilai_angka'] : null;
+                $cacheKey = $nisn . '|' . $semesterSiswa;
+                if (!isset($nilaiCache[$cacheKey])) {
+                    $stNilaiBySemester->execute([
+                        'nisn' => $nisn,
+                        'semester' => $semesterSiswa,
+                        'ta' => $setting['tahun_ajaran'],
+                    ]);
+                    $nilaiByMapel = [];
+                    foreach ($stNilaiBySemester->fetchAll() as $nilaiRow) {
+                        $nilaiByMapel[(int) $nilaiRow['mapel_id']] = (float) $nilaiRow['nilai_angka'];
+                    }
+                    $nilaiCache[$cacheKey] = $nilaiByMapel;
+                }
+
+                $nilaiLama = $nilaiCache[$cacheKey][$mapelId] ?? null;
 
                 if ($nilaiLama !== null && abs($nilaiLama - $nilai) < 0.0001) {
                     $skipUnchanged++;
@@ -633,6 +666,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $count = 0;
         $skipRange = 0;
 
+        $stSiswa = db()->prepare('SELECT nisn, current_semester, status_siswa, kelas FROM siswa WHERE nisn=:nisn LIMIT 1');
+        $stUpdateSiswa = db()->prepare('UPDATE siswa
+            SET kelas = CASE WHEN :kelas_set = 1 THEN :kelas ELSE kelas END,
+                nomor_absen = CASE WHEN :absen_set = 1 THEN :nomor_absen ELSE nomor_absen END
+            WHERE nisn=:nisn');
+        $stInsertRapor = db()->prepare('INSERT INTO nilai_rapor (nisn, mapel_id, semester, tahun_ajaran, nilai_angka, is_finalized) VALUES (:nisn,:mapel,:semester,:ta,:nilai,0)
+            ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka), is_finalized=0');
+        $stInsertUam = db()->prepare('INSERT INTO nilai_uam (nisn, mapel_id, nilai_angka) VALUES (:nisn,:mapel,:nilai)
+            ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka)');
+
         foreach ($rows as $i => $row) {
             if ($i < $dataStartRow) {
                 continue;
@@ -643,7 +686,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            $stSiswa = db()->prepare('SELECT nisn, current_semester, status_siswa, kelas FROM siswa WHERE nisn=:nisn LIMIT 1');
             $stSiswa->execute(['nisn' => $nisn]);
             $siswa = $stSiswa->fetch();
             if (!$siswa || $siswa['status_siswa'] !== 'Aktif') {
@@ -655,24 +697,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nomorAbsen = $nomorAbsenIndex !== null ? trim((string) ($row[$nomorAbsenIndex] ?? '')) : '';
             
             if ($kelas !== '' || $nomorAbsen !== '') {
-                $updateData = [];
-                if ($kelas !== '') {
-                    $updateData['kelas'] = $kelas;
-                }
-                if ($nomorAbsen !== '') {
-                    $updateData['nomor_absen'] = (int) $nomorAbsen;
-                }
-                
-                if (!empty($updateData)) {
-                    $setClauses = [];
-                    foreach ($updateData as $col => $val) {
-                        $setClauses[] = "$col = :$col";
-                    }
-                    $updateQuery = "UPDATE siswa SET " . implode(', ', $setClauses) . " WHERE nisn=:nisn";
-                    $stUpdate = db()->prepare($updateQuery);
-                    $updateData['nisn'] = $nisn;
-                    $stUpdate->execute($updateData);
-                }
+                $stUpdateSiswa->execute([
+                    'nisn' => $nisn,
+                    'kelas_set' => $kelas !== '' ? 1 : 0,
+                    'kelas' => $kelas,
+                    'absen_set' => $nomorAbsen !== '' ? 1 : 0,
+                    'nomor_absen' => $nomorAbsen !== '' ? (int) $nomorAbsen : 0,
+                ]);
             }
 
             $semesterSiswa = normalize_current_semester($siswa['current_semester']);
@@ -700,9 +731,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($action === 'import_rapor') {
-                    $stmt = db()->prepare('INSERT INTO nilai_rapor (nisn, mapel_id, semester, tahun_ajaran, nilai_angka, is_finalized) VALUES (:nisn,:mapel,:semester,:ta,:nilai,0)
-                        ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka), is_finalized=0');
-                    $stmt->execute([
+                    $stInsertRapor->execute([
                         'nisn' => $nisn,
                         'mapel' => $mapelId,
                         'semester' => $semesterSiswa,
@@ -714,9 +743,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($action === 'import_uam') {
-                    $stmt = db()->prepare('INSERT INTO nilai_uam (nisn, mapel_id, nilai_angka) VALUES (:nisn,:mapel,:nilai)
-                        ON DUPLICATE KEY UPDATE nilai_angka=VALUES(nilai_angka)');
-                    $stmt->execute([
+                    $stInsertUam->execute([
                         'nisn' => $nisn,
                         'mapel' => $mapelId,
                         'nilai' => $nilai,
@@ -766,29 +793,46 @@ if ($monitorSemester === 'UAM') {
     $students = $stStudents->fetchAll();
 }
 
+$entryCountByNisn = [];
+$nisnListMonitor = array_values(array_unique(array_filter(array_map(static function ($row) {
+    return (string) ($row['nisn'] ?? '');
+}, $students), static function ($nisn) {
+    return $nisn !== '';
+})));
+
+if (count($nisnListMonitor) > 0) {
+    $chunkSize = 500;
+    for ($offset = 0; $offset < count($nisnListMonitor); $offset += $chunkSize) {
+        $chunk = array_slice($nisnListMonitor, $offset, $chunkSize);
+        if (count($chunk) === 0) {
+            continue;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+        if ($monitorSemester === 'UAM') {
+            $sqlCount = "SELECT nisn, COUNT(*) c FROM nilai_uam WHERE nisn IN ($placeholders) GROUP BY nisn";
+            $stCount = db()->prepare($sqlCount);
+            $stCount->execute($chunk);
+        } else {
+            $sqlCount = "SELECT nisn, COUNT(*) c FROM nilai_rapor WHERE semester = ? AND tahun_ajaran = ? AND nisn IN ($placeholders) GROUP BY nisn";
+            $stCount = db()->prepare($sqlCount);
+            $params = array_merge([(int) $monitorSemester, (string) $setting['tahun_ajaran']], $chunk);
+            $stCount->execute($params);
+        }
+
+        foreach ($stCount->fetchAll() as $countRow) {
+            $entryCountByNisn[(string) $countRow['nisn']] = (int) ($countRow['c'] ?? 0);
+        }
+    }
+}
+
 $rowsMonitor = [];
 foreach ($students as $student) {
-    $entryCount = 0;
+    $entryCount = (int) ($entryCountByNisn[(string) ($student['nisn'] ?? '')] ?? 0);
     $statusLabel = 'Belum Terupload';
 
-    if ($monitorSemester === 'UAM') {
-        $st = db()->prepare('SELECT COUNT(*) c FROM nilai_uam WHERE nisn=:nisn');
-        $st->execute(['nisn' => $student['nisn']]);
-        $entryCount = (int) ($st->fetch()['c'] ?? 0);
-        if ($entryCount > 0) {
-            $statusLabel = $entryCount >= $mapelCount ? 'Sudah Terupload (Lengkap)' : 'Sudah Terupload (Sebagian)';
-        }
-    } else {
-        $st = db()->prepare('SELECT COUNT(*) c FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND tahun_ajaran=:ta');
-        $st->execute([
-            'nisn' => $student['nisn'],
-            'semester' => (int) $monitorSemester,
-            'ta' => $setting['tahun_ajaran'],
-        ]);
-        $entryCount = (int) ($st->fetch()['c'] ?? 0);
-        if ($entryCount > 0) {
-            $statusLabel = $entryCount >= $mapelCount ? 'Sudah Terupload (Lengkap)' : 'Sudah Terupload (Sebagian)';
-        }
+    if ($entryCount > 0) {
+        $statusLabel = $entryCount >= $mapelCount ? 'Sudah Terupload (Lengkap)' : 'Sudah Terupload (Sebagian)';
     }
 
     $isUploaded = $entryCount > 0;
