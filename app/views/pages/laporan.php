@@ -87,45 +87,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetSem = $sheet->createSheet();
             $sheetSem->setTitle('Semester ' . $sem);
 
-            // Baris 1: Judul "NILAI RAPORT SEMESTER X" yang di-merge
-            $sheetSem->setCellValue('A1', 'No');
-            $sheetSem->setCellValue('B1', 'NISN');
-            $sheetSem->setCellValue('C1', 'NIS');
-            $sheetSem->setCellValue('D1', 'Nama Lengkap');
-            
             // Hitung kolom terakhir untuk merge title
             $numMapel = count($mapelList);
             $totalCols = 4 + $numMapel + 1; // 4 info cols + mapel + rata-rata
             $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
             
-            // Merge cells untuk judul dari kolom E sampai kolom terakhir
+            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-D)
+            $sheetSem->mergeCells('A1:A2');
+            $sheetSem->setCellValue('A1', 'No');
+            $sheetSem->mergeCells('B1:B2');
+            $sheetSem->setCellValue('B1', 'NISN');
+            $sheetSem->mergeCells('C1:C2');
+            $sheetSem->setCellValue('C1', 'NIS');
+            $sheetSem->mergeCells('D1:D2');
+            $sheetSem->setCellValue('D1', 'Nama Lengkap');
+            
+            // BARIS 1: Merge horizontal untuk judul "NILAI RAPORT SEMESTER X"
             $sheetSem->mergeCells('E1:' . $lastCol . '1');
             $sheetSem->setCellValue('E1', 'NILAI RAPORT SEMESTER ' . $sem);
             
-            // Styling untuk baris judul yang di-merge
+            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari E2)
+            $colIndex = 5; // E = 5
+            foreach ($mapelList as $m) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+                $sheetSem->setCellValue($colLetter . '2', $m['nama_mapel']);
+                $colIndex++;
+            }
+            // Kolom terakhir untuk RATA-RATA
+            $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+            $sheetSem->setCellValue($lastColLetter . '2', 'RATA-RATA');
+            
+            // Styling untuk kolom info (A1:D2) - merged cells
+            $infoStyle = $sheetSem->getStyle('A1:D2');
+            $infoStyle->getFont()->setBold(true);
+            $infoStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $infoStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+            
+            // Styling untuk judul baris 1 (E1 merged)
             $titleStyle = $sheetSem->getStyle('E1:' . $lastCol . '1');
             $titleStyle->getFont()->setBold(true);
             $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $titleStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
-            
-            // Styling untuk kolom info (A1:D1)
-            $infoStyle = $sheetSem->getStyle('A1:D1');
-            $infoStyle->getFont()->setBold(true);
-            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
-            // Baris 2: Header kolom untuk mata pelajaran
-            $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
-            foreach ($mapelList as $m) {
-                $headerRow[] = $m['nama_mapel'];
-            }
-            $headerRow[] = 'RATA-RATA';
-            $sheetSem->fromArray($headerRow, null, 'A2');
-
-            // Styling header baris 2 (warna kuning background, bold text)
-            $headerStyle = $sheetSem->getStyle('A2:' . $lastCol . '2');
+            // Styling untuk header mapel baris 2 (E2 sampai lastCol)
+            $headerStyle = $sheetSem->getStyle('E2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
+            $headerStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
@@ -174,44 +185,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetUam = $sheet->createSheet();
             $sheetUam->setTitle('UAM (Akhir)');
 
-            // Baris 1: Judul "NILAI UAM (AKHIR)" yang di-merge
-            $sheetUam->setCellValue('A1', 'No');
-            $sheetUam->setCellValue('B1', 'NISN');
-            $sheetUam->setCellValue('C1', 'NIS');
-            $sheetUam->setCellValue('D1', 'Nama Lengkap');
-            
             // Hitung kolom terakhir untuk merge title
             $numMapel = count($mapelList);
             $totalCols = 4 + $numMapel; // 4 info cols + mapel (UAM tidak ada rata-rata)
             $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
             
-            // Merge cells untuk judul dari kolom E sampai kolom terakhir
+            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-D)
+            $sheetUam->mergeCells('A1:A2');
+            $sheetUam->setCellValue('A1', 'No');
+            $sheetUam->mergeCells('B1:B2');
+            $sheetUam->setCellValue('B1', 'NISN');
+            $sheetUam->mergeCells('C1:C2');
+            $sheetUam->setCellValue('C1', 'NIS');
+            $sheetUam->mergeCells('D1:D2');
+            $sheetUam->setCellValue('D1', 'Nama Lengkap');
+            
+            // BARIS 1: Merge horizontal untuk judul "NILAI UAM (AKHIR)"
             $sheetUam->mergeCells('E1:' . $lastCol . '1');
             $sheetUam->setCellValue('E1', 'NILAI UAM (AKHIR)');
             
-            // Styling untuk baris judul yang di-merge
+            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari E2)
+            $colIndex = 5; // E = 5
+            foreach ($mapelList as $m) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+                $sheetUam->setCellValue($colLetter . '2', $m['nama_mapel']);
+                $colIndex++;
+            }
+            
+            // Styling untuk kolom info (A1:D2) - merged cells
+            $infoStyle = $sheetUam->getStyle('A1:D2');
+            $infoStyle->getFont()->setBold(true);
+            $infoStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $infoStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+            
+            // Styling untuk judul baris 1 (E1 merged)
             $titleStyle = $sheetUam->getStyle('E1:' . $lastCol . '1');
             $titleStyle->getFont()->setBold(true);
             $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $titleStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
-            
-            // Styling untuk kolom info (A1:D1)
-            $infoStyle = $sheetUam->getStyle('A1:D1');
-            $infoStyle->getFont()->setBold(true);
-            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
-            // Baris 2: Header kolom untuk mata pelajaran
-            $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
-            foreach ($mapelList as $m) {
-                $headerRow[] = $m['nama_mapel'];
-            }
-            $sheetUam->fromArray($headerRow, null, 'A2');
-
-            // Styling header baris 2 (warna kuning background, bold text)
-            $headerStyle = $sheetUam->getStyle('A2:' . $lastCol . '2');
+            // Styling untuk header mapel baris 2 (E2 sampai lastCol)
+            $headerStyle = $sheetUam->getStyle('E2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
+            $headerStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
@@ -244,45 +264,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetIjazah = $sheet->createSheet();
             $sheetIjazah->setTitle('Nilai Ijazah');
 
-            // Baris 1: Judul "NILAI IJAZAH" yang di-merge
-            $sheetIjazah->setCellValue('A1', 'No');
-            $sheetIjazah->setCellValue('B1', 'NISN');
-            $sheetIjazah->setCellValue('C1', 'NIS');
-            $sheetIjazah->setCellValue('D1', 'Nama Lengkap');
-            
             // Hitung kolom terakhir untuk merge title
             $numMapel = count($mapelList);
             $totalCols = 4 + $numMapel + 1; // 4 info cols + mapel + rata-rata ijazah
             $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
             
-            // Merge cells untuk judul dari kolom E sampai kolom terakhir
+            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-D)
+            $sheetIjazah->mergeCells('A1:A2');
+            $sheetIjazah->setCellValue('A1', 'No');
+            $sheetIjazah->mergeCells('B1:B2');
+            $sheetIjazah->setCellValue('B1', 'NISN');
+            $sheetIjazah->mergeCells('C1:C2');
+            $sheetIjazah->setCellValue('C1', 'NIS');
+            $sheetIjazah->mergeCells('D1:D2');
+            $sheetIjazah->setCellValue('D1', 'Nama Lengkap');
+            
+            // BARIS 1: Merge horizontal untuk judul "NILAI IJAZAH"
             $sheetIjazah->mergeCells('E1:' . $lastCol . '1');
             $sheetIjazah->setCellValue('E1', 'NILAI IJAZAH');
             
-            // Styling untuk baris judul yang di-merge
+            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari E2)
+            $colIndex = 5; // E = 5
+            foreach ($mapelList as $m) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+                $sheetIjazah->setCellValue($colLetter . '2', $m['nama_mapel']);
+                $colIndex++;
+            }
+            // Kolom terakhir untuk RATA-RATA IJAZAH
+            $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+            $sheetIjazah->setCellValue($lastColLetter . '2', 'RATA-RATA IJAZAH');
+            
+            // Styling untuk kolom info (A1:D2) - merged cells
+            $infoStyle = $sheetIjazah->getStyle('A1:D2');
+            $infoStyle->getFont()->setBold(true);
+            $infoStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $infoStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
+            
+            // Styling untuk judul baris 1 (E1 merged)
             $titleStyle = $sheetIjazah->getStyle('E1:' . $lastCol . '1');
             $titleStyle->getFont()->setBold(true);
             $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $titleStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
-            
-            // Styling untuk kolom info (A1:D1)
-            $infoStyle = $sheetIjazah->getStyle('A1:D1');
-            $infoStyle->getFont()->setBold(true);
-            $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-            $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
-            // Baris 2: Header kolom untuk mata pelajaran
-            $headerRow = ['No', 'NISN', 'NIS', 'Nama Lengkap'];
-            foreach ($mapelList as $m) {
-                $headerRow[] = $m['nama_mapel'];
-            }
-            $headerRow[] = 'RATA-RATA IJAZAH';
-            $sheetIjazah->fromArray($headerRow, null, 'A2');
-
-            // Styling header baris 2 (warna kuning background, bold text)
-            $headerStyle = $sheetIjazah->getStyle('A2:' . $lastCol . '2');
+            // Styling untuk header mapel baris 2 (E2 sampai lastCol)
+            $headerStyle = $sheetIjazah->getStyle('E2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
+            $headerStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
