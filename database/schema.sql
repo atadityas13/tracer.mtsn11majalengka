@@ -73,6 +73,20 @@ CREATE TABLE IF NOT EXISTS pengaturan_akademik (
     UNIQUE KEY uniq_ta_sem (tahun_ajaran, semester_aktif)
 );
 
+CREATE TABLE IF NOT EXISTS finalisasi_riwayat (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tahun_ajaran VARCHAR(20) NOT NULL,
+    semester_aktif ENUM('GANJIL','GENAP') NOT NULL,
+    semester_target TINYINT NOT NULL,
+    kelas_filter VARCHAR(50) NULL,
+    nisn_json LONGTEXT NOT NULL,
+    jumlah_nilai_locked INT NOT NULL DEFAULT 0,
+    jumlah_siswa_promoted INT NOT NULL DEFAULT 0,
+    created_by VARCHAR(120) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_finalisasi_ta_sem (tahun_ajaran, semester_target)
+);
+
 INSERT INTO pengaturan_akademik (tahun_ajaran, semester_aktif)
 SELECT '2025/2026', 'GANJIL'
 WHERE NOT EXISTS (SELECT 1 FROM pengaturan_akademik);
