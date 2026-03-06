@@ -171,6 +171,60 @@ if (!function_exists('detect_rdm_kelas')) {
     }
 }
 
+if (!function_exists('normalize_tahun_ajaran')) {
+    function normalize_tahun_ajaran(string $value): string
+    {
+        if (preg_match('/\b(20\d{2})\s*[\/\-]\s*(20\d{2})\b/', $value, $m)) {
+            return $m[1] . '/' . $m[2];
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('detect_rdm_tahun_ajaran')) {
+    function detect_rdm_tahun_ajaran(array $rows): string
+    {
+        $maxRows = min(30, count($rows));
+
+        for ($r = 0; $r < $maxRows; $r++) {
+            $row = $rows[$r] ?? [];
+            $colCount = count($row);
+
+            for ($c = 0; $c < $colCount; $c++) {
+                $raw = trim((string) ($row[$c] ?? ''));
+                if ($raw === '') {
+                    continue;
+                }
+
+                $normalized = normalize_header($raw);
+                $fromCell = normalize_tahun_ajaran($raw);
+                if ($fromCell !== '') {
+                    return $fromCell;
+                }
+
+                if (strpos($normalized, 'TAHUN AJARAN') !== false || strpos($normalized, 'THN AJARAN') !== false) {
+                    for ($next = $c + 1; $next <= $c + 3; $next++) {
+                        $candidate = trim((string) ($row[$next] ?? ''));
+                        $fromNeighbor = normalize_tahun_ajaran($candidate);
+                        if ($fromNeighbor !== '') {
+                            return $fromNeighbor;
+                        }
+                    }
+
+                    $nextRowCandidate = trim((string) (($rows[$r + 1][$c] ?? '')));
+                    $fromNextRow = normalize_tahun_ajaran($nextRowCandidate);
+                    if ($fromNextRow !== '') {
+                        return $fromNextRow;
+                    }
+                }
+            }
+        }
+
+        return '';
+    }
+}
+
 if (!function_exists('detect_import_layout')) {
     function detect_import_layout(array $rows, array $nisnHeaderCandidates, array $aliasToMapelId, array $mapelByName): array
     {
@@ -474,6 +528,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mapelColumns = $layout['mapel_columns'];
     $dataStartRow = (int) $layout['data_start_row'];
     $kelasRdmDetected = detect_rdm_kelas($rows);
+    $tahunAjaranRdmDetected = detect_rdm_tahun_ajaran($rows);
 
     if ($nisnIndex === null) {
         set_flash('error', 'Kolom NISN tidak ditemukan di header file Excel.');
@@ -482,6 +537,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (count($mapelColumns) === 0) {
         set_flash('error', 'Kolom mapel tidak dikenali. Pastikan header mapel sesuai format leger.');
+        redirect('index.php?page=data-nilai');
+    }
+
+    if ($action === 'preview_rapor_rdm' && $tahunAjaranRdmDetected !== '' && $tahunAjaranRdmDetected !== (string) $setting['tahun_ajaran']) {
+        set_flash('error', 'Tahun ajaran file RDM (' . $tahunAjaranRdmDetected . ') tidak sama dengan tahun ajaran aktif aplikasi (' . $setting['tahun_ajaran'] . '). Import dibatalkan.');
+        redirect('index.php?page=data-nilai');
+    }
+
+    if ($action === 'preview_rapor_rdm' && $kelasRdmDetected === '') {
+        set_flash('error', 'Kelas pada header file RDM tidak ditemukan. Untuk import RDM, format wajib menyertakan kelas di header (contoh: KELAS: VII-1).');
         redirect('index.php?page=data-nilai');
     }
 
@@ -536,6 +601,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
+            $hasDataSignal = false;
+            foreach ($mapelColumns as $colIndex => $mapelId) {
+                $signal = trim((string) ($row[$colIndex] ?? ''));
+                if ($signal !== '') {
+                    $hasDataSignal = true;
+                    break;
+                }
+            }
+            if (!$hasDataSignal) {
+                continue;
+            }
+
             $excelRow = $i + 1;
             $nisn = trim((string) ($row[$nisnIndex] ?? ''));
             if ($nisn === '') {
@@ -549,8 +626,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            $kelasRow = $kelasIndex !== null ? trim((string) ($row[$kelasIndex] ?? '')) : '';
-            $kelasFinal = $kelasRow !== '' ? $kelasRow : $kelasRdmDetected;
+            $kelasFinal = $kelasRdmDetected;
 
             $semesterSiswa = normalize_current_semester($siswa['current_semester']);
             $isRaporTarget = in_array($semesterSiswa, $targetRapor, true);
@@ -643,7 +719,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION[$rdmPreviewSessionKey] = [
             'meta' => [
                 'tahun_ajaran' => (string) $setting['tahun_ajaran'],
+                'tahun_ajaran_file' => $tahunAjaranRdmDetected,
                 'kelas_detected' => $kelasRdmDetected,
+                'kelas_source' => 'header',
                 'generated_at' => date('Y-m-d H:i:s'),
                 'insert_count' => $insertCount,
                 'update_count' => $updateCount,
@@ -925,6 +1003,41 @@ require dirname(__DIR__) . '/partials/header.php';
     $previewMeta = $rdmPreview['meta'];
     $previewEntries = $rdmPreview['entries'];
     $previewStudentUpdates = is_array($rdmPreview['student_updates'] ?? null) ? $rdmPreview['student_updates'] : [];
+    $previewByStudent = [];
+    foreach ($previewEntries as $entry) {
+        $nisnKey = (string) ($entry['nisn'] ?? '');
+        if ($nisnKey === '') {
+            continue;
+        }
+
+        if (!isset($previewByStudent[$nisnKey])) {
+            $previewByStudent[$nisnKey] = [
+                'excel_row' => (int) ($entry['excel_row'] ?? 0),
+                'nisn' => $nisnKey,
+                'nama' => (string) ($entry['nama'] ?? '-'),
+                'semester' => (string) ($entry['semester'] ?? '-'),
+                'kelas_lama' => (string) ($entry['kelas_lama'] ?? ''),
+                'kelas_baru' => (string) ($entry['kelas_baru'] ?? ''),
+                'insert_count' => 0,
+                'update_count' => 0,
+                'details' => [],
+            ];
+        }
+
+        if (($entry['aksi'] ?? '') === 'INSERT') {
+            $previewByStudent[$nisnKey]['insert_count']++;
+        } else {
+            $previewByStudent[$nisnKey]['update_count']++;
+        }
+
+        $previewByStudent[$nisnKey]['details'][] = [
+            'mapel_nama' => (string) ($entry['mapel_nama'] ?? '-'),
+            'nilai_lama' => $entry['nilai_lama'] ?? null,
+            'nilai_baru' => (float) ($entry['nilai_baru'] ?? 0),
+            'aksi' => (string) ($entry['aksi'] ?? 'UPDATE'),
+        ];
+    }
+    $previewStudentList = array_values($previewByStudent);
     ?>
     <div class="card border-warning shadow-sm mb-3">
         <div class="card-header bg-warning-subtle border-0 pt-3">
@@ -934,6 +1047,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <div class="card-body">
             <div class="row g-2 small mb-3">
                 <div class="col-md-3"><strong>Tahun Ajaran:</strong> <?= e((string) ($previewMeta['tahun_ajaran'] ?? '-')) ?></div>
+                <div class="col-md-3"><strong>Tahun Ajaran File RDM:</strong> <?= e((string) (($previewMeta['tahun_ajaran_file'] ?? '') !== '' ? $previewMeta['tahun_ajaran_file'] : '-')) ?></div>
                 <div class="col-md-3"><strong>Kelas Terdeteksi (Header):</strong> <?= e((string) (($previewMeta['kelas_detected'] ?? '') !== '' ? $previewMeta['kelas_detected'] : '-')) ?></div>
                 <div class="col-md-3"><strong>Insert:</strong> <?= e((string) ((int) ($previewMeta['insert_count'] ?? 0))) ?></div>
                 <div class="col-md-3"><strong>Update:</strong> <?= e((string) ((int) ($previewMeta['update_count'] ?? 0))) ?></div>
@@ -966,38 +1080,81 @@ require dirname(__DIR__) . '/partials/header.php';
                         <th>Baris Excel</th>
                         <th>NISN</th>
                         <th>Nama</th>
-                        <th>Mapel</th>
                         <th>Semester</th>
                         <th>Kelas Lama</th>
                         <th>Kelas Baru</th>
-                        <th>Nilai Lama</th>
-                        <th>Nilai Baru</th>
+                        <th>Total Mapel</th>
+                        <th>Insert</th>
+                        <th>Update</th>
                         <th>Aksi</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <?php $previewNo = 1; foreach ($previewEntries as $entry): ?>
+                    <?php $previewNo = 1; foreach ($previewStudentList as $studentPreview): ?>
+                        <?php $modalId = 'modalPreviewNilai' . md5((string) ($studentPreview['nisn'] ?? '')); ?>
                         <tr>
                             <td><?= e((string) $previewNo++) ?></td>
-                            <td><?= e((string) ($entry['excel_row'] ?? '-')) ?></td>
-                            <td><?= e((string) ($entry['nisn'] ?? '-')) ?></td>
-                            <td><?= e((string) ($entry['nama'] ?? '-')) ?></td>
-                            <td><?= e((string) ($entry['mapel_nama'] ?? '-')) ?></td>
-                            <td><?= e((string) ($entry['semester'] ?? '-')) ?></td>
-                            <td><?= e((string) (($entry['kelas_lama'] ?? '') !== '' ? $entry['kelas_lama'] : '-')) ?></td>
-                            <td><?= e((string) (($entry['kelas_baru'] ?? '') !== '' ? $entry['kelas_baru'] : '-')) ?></td>
-                            <td><?= e((string) (($entry['nilai_lama'] ?? null) !== null ? number_format((float) $entry['nilai_lama'], 2) : '-')) ?></td>
-                            <td><?= e((string) number_format((float) ($entry['nilai_baru'] ?? 0), 2)) ?></td>
+                            <td><?= e((string) ($studentPreview['excel_row'] > 0 ? $studentPreview['excel_row'] : '-')) ?></td>
+                            <td><?= e((string) ($studentPreview['nisn'] ?? '-')) ?></td>
+                            <td><?= e((string) ($studentPreview['nama'] ?? '-')) ?></td>
+                            <td><?= e((string) ($studentPreview['semester'] ?? '-')) ?></td>
+                            <td><?= e((string) (($studentPreview['kelas_lama'] ?? '') !== '' ? $studentPreview['kelas_lama'] : '-')) ?></td>
+                            <td><?= e((string) (($studentPreview['kelas_baru'] ?? '') !== '' ? $studentPreview['kelas_baru'] : '-')) ?></td>
+                            <td><?= e((string) count($studentPreview['details'])) ?></td>
+                            <td><?= e((string) ((int) ($studentPreview['insert_count'] ?? 0))) ?></td>
+                            <td><?= e((string) ((int) ($studentPreview['update_count'] ?? 0))) ?></td>
                             <td>
-                                <span class="badge <?= (($entry['aksi'] ?? '') === 'INSERT') ? 'text-bg-primary' : 'text-bg-warning' ?>">
-                                    <?= e((string) ($entry['aksi'] ?? '-')) ?>
-                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#<?= e($modalId) ?>">Lihat Nilai</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
+
+            <?php foreach ($previewStudentList as $studentPreview): ?>
+                <?php $modalId = 'modalPreviewNilai' . md5((string) ($studentPreview['nisn'] ?? '')); ?>
+                <div class="modal fade" id="<?= e($modalId) ?>" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Detail Nilai - <?= e((string) ($studentPreview['nama'] ?? '-')) ?> (<?= e((string) ($studentPreview['nisn'] ?? '-')) ?>)</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                        <tr>
+                                            <th style="width: 50px;">No</th>
+                                            <th>Mapel</th>
+                                            <th>Nilai Lama</th>
+                                            <th>Nilai Baru</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php $detailNo = 1; foreach ($studentPreview['details'] as $detail): ?>
+                                            <tr>
+                                                <td><?= e((string) $detailNo++) ?></td>
+                                                <td><?= e((string) ($detail['mapel_nama'] ?? '-')) ?></td>
+                                                <td><?= e((string) (($detail['nilai_lama'] ?? null) !== null ? number_format((float) $detail['nilai_lama'], 2) : '-')) ?></td>
+                                                <td><?= e((string) number_format((float) ($detail['nilai_baru'] ?? 0), 2)) ?></td>
+                                                <td>
+                                                    <span class="badge <?= (($detail['aksi'] ?? '') === 'INSERT') ? 'text-bg-primary' : 'text-bg-warning' ?>">
+                                                        <?= e((string) ($detail['aksi'] ?? '-')) ?>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 <?php endif; ?>
