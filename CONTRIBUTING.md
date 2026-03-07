@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Terima kasih atas kontribusi Anda untuk **e-Leger MTsN 11 Majalengka**.
+Terima kasih atas kontribusi Anda untuk **TRACER MTsN 11 Majalengka** (Transkrip & Academic Ledger).
 
 ## Alur Kontribusi
 

@@ -52,7 +52,7 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
     <?php if ($user): ?>
         <aside class="sidebar">
             <div class="brand-wrap mb-3">
-                <div class="small text-white-50">e-Leger</div>
+                <div class="small text-white-50">TRACER</div>
                 <div class="h5 mb-0 text-white fw-semibold">MTsN 11 Majalengka</div>
             </div>
 
@@ -114,7 +114,7 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
 
             <div class="sidebar-footer small">
                 <div>© <?= date('Y') ?> MTsN 11 Majalengka</div>
-                <div>• e-Leger v1.0.0 •<br>Developed by A.T. Aditya</div>
+                <div>• TRACER v1.0.0 •<br>Developed by A.T. Aditya</div>
             </div>
         </aside>
     <?php endif; ?>
@@ -124,8 +124,8 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
             <header class="topbar card shadow-sm border-0 mb-3">
                 <?php $set = setting_akademik(); ?>
                 <div class="topbar-left">
-                    <div class="fw-semibold text-white">Sistem e-Leger</div>
-                    <small class="text-white-50">Kelola data nilai, semester, dan kelulusan</small>
+                    <div class="fw-semibold text-white">TRACER - Tracing Progress, Graduating Success.</div>
+                    <small class="text-white-50">Transkrip & Academic Ledger</small>
                 </div>
                 <div class="topbar-center">
                     <div class="fw-semibold fs-5 text-white">TA: <?= e($set['tahun_ajaran']) ?></div>

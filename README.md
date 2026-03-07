@@ -1,6 +1,8 @@
-# e-Leger MTsN 11 Majalengka
+# TRACER MTsN 11 Majalengka
 
-Aplikasi web e-leger berbasis **PHP Native + PDO**, **MySQL**, dan **CSS/JS murni** tanpa framework.
+> **Transkrip & Academic Ledger** — *Tracing Progress, Graduating Success.*
+
+Aplikasi web TRACER berbasis **PHP Native + PDO**, **MySQL**, dan **CSS/JS murni** tanpa framework.
 
 ## Fitur Utama
 

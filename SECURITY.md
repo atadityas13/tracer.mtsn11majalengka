@@ -11,7 +11,7 @@ Jika Anda menemukan celah keamanan, **jangan buat issue publik**.
 Silakan laporkan melalui:
 
 - Email: **mtsn11majalengka@gmail.com**
-- Subjek: `Security Report - e-Leger`
+- Subjek: `Security Report - TRACER`
 
 ## Informasi Laporan Minimum
 

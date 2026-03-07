@@ -98,9 +98,9 @@ $flash = get_flash();
             <div class="login-brand">
                 <div class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-mortarboard-fill fs-4"></i>
-                    <h1 class="h4 mb-0">e-Leger MTsN 11 Majalengka</h1>
+                    <h1 class="h4 mb-0">TRACER MTsN 11 Majalengka</h1>
                 </div>
-                <div class="subtitle">Sistem Manajemen Data Nilai Siswa</div>
+                <div class="subtitle">Transkrip & Academic Ledger<br><small class="text-muted" style="font-size: 0.85rem;">Tracing Progress, Graduating Success.</small></div>
             </div>
 
             <div class="login-panel p-4 p-md-5">

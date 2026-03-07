@@ -137,7 +137,8 @@ if ($token === '') {
         </div>
 
         <div class="text-center mt-4 text-muted">
-            <small><b>Sistem Verifikasi E-Leger MTsN 11 Majalengka</b><br>
+            <small><b>Sistem Verifikasi TRACER MTsN 11 Majalengka</b><br>
+            <em>Tracing Progress, Graduating Success.</em><br>
             Hubungi: (0233) 3600020 | mtsn11majalengka@gmail.com</small>
         </div>
     </div>
@@ -281,7 +282,8 @@ if (!$alumni) {
         </div>
 
         <div class="text-center mt-4 text-muted">
-            <small><b>Sistem Verifikasi E-Leger MTsN 11 Majalengka</b></small>
+            <small><b>Sistem Verifikasi TRACER MTsN 11 Majalengka</b><br>
+            <em>Tracing Progress, Graduating Success.</em></small>
         </div>
     </div>
 </body>
@@ -615,7 +617,7 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
             <div class="card-body">
                 <div class="meta-note mb-4" role="alert">
                     <strong><i class="bi bi-shield-check"></i> Validasi Sistem Berhasil</strong><br>
-                    Dokumen dianggap asli selama data pada dokumen fisik identik dengan hasil verifikasi pada Sistem E-Leger MTsN 11 Majalengka.
+                    Dokumen dianggap asli selama data pada dokumen fisik identik dengan hasil verifikasi pada Sistem TRACER MTsN 11 Majalengka.
                 </div>
 
                 <h5 class="mb-3">Meta Data</h5>

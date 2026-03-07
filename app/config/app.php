@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'name' => 'e-Leger MTsN 11 Majalengka',
+    'name' => 'TRACER MTsN 11 Majalengka',    // Transkrip & Academic Ledger
     'theme' => [
         'primary' => '#064e3b',
         'accent' => '#10b981',
