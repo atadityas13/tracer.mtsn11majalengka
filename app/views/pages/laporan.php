@@ -474,6 +474,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allHtml = '';
         $firstAlumniName = '';
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . "://$_SERVER[HTTP_HOST]";
+        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
+        if ($scriptDir === '.' || $scriptDir === '/') {
+            $scriptDir = '';
+        }
+        $verifyPath = $scriptDir . '/verify.php';
 
         $normalizeMapel = static function (string $text): string {
             $text = strtolower($text);
@@ -527,7 +532,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $detail = json_decode($alumni['data_ijazah_json'], true) ?: [];
             
             // Generate QR Code URL
-            $verifyUrl = $baseUrl . '/verify.php?token=' . urlencode($alumni['verification_token']);
+            $verifyUrl = $baseUrl . $verifyPath . '?token=' . urlencode($alumni['verification_token']);
             $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
             $qrCodeSrc = $qrCodeUrl;
             $qrContext = stream_context_create([
