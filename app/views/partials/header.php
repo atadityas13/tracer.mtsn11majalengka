@@ -51,12 +51,10 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
 <div class="app-shell">
     <?php if ($user): ?>
         <aside class="sidebar">
-            <div class="brand-wrap mb-3">
-                <div class="mb-2">
-                    <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER" style="height: 50px; object-fit: contain; width: 100%;">
-                </div>
+            <div class="brand-wrap">
+                <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo">
                 <div class="small text-white-50">TRACER</div>
-                <div class="h5 mb-0 text-white fw-semibold">MTsN 11 Majalengka</div>
+                <div class="h5 mb-0 text-white">MTsN 11 Majalengka</div>
             </div>
 
             <div class="menu-label">Menu Utama</div>

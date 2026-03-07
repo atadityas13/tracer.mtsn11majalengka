@@ -465,7 +465,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Load logo once instead of per-student to reduce IO overhead.
         $logoDataUri = '';
-        $logoPath = dirname(__DIR__, 3) . '/public/assets/logo-tracer-mtsn11majalengka.png';
+        $logoPath = dirname(__DIR__, 3) . '/public/assets/logo-kemenag.png';
         if (is_file($logoPath)) {
             $logoBinary = file_get_contents($logoPath);
             if ($logoBinary !== false) {

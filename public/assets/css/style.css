@@ -98,6 +98,52 @@ body {
   min-height: 0;
 }
 
+.brand-wrap {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  padding: 1.2rem 0.8rem;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  margin-bottom: 1.8rem;
+}
+
+.brand-wrap:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.brand-wrap img {
+  height: 90px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 0.8rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: transform 0.2s ease;
+}
+
+.brand-wrap:hover img {
+  transform: scale(1.05);
+}
+
+.brand-wrap .small {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.4rem;
+  opacity: 0.85;
+}
+
+.brand-wrap .h5 {
+  font-size: 1.1rem;
+  margin-bottom: 0;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
 .topbar {
   padding: 0.9rem 1.5rem;
   display: grid;

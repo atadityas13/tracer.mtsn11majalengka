@@ -62,12 +62,44 @@ $flash = get_flash();
             background: linear-gradient(135deg, #064e3b 0%, #10b981 100%);
             color: #fff;
             border-radius: 0.95rem 0.95rem 0 0;
-            padding: 1.5rem;
+            padding: 2rem 1.5rem;
+            text-align: center;
+        }
+
+        .login-brand-logo {
+            margin-bottom: 1.2rem;
+        }
+
+        .login-brand-logo img {
+            height: 100px;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-brand h1 {
+            margin-bottom: 0.5rem !important;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
         }
 
         .login-brand .subtitle {
             opacity: 0.92;
             font-size: 0.9rem;
+            margin: 0;
         }
 
         .login-panel {
@@ -97,11 +129,11 @@ $flash = get_flash();
     <div class="login-box">
         <div class="card border-0 shadow-lg">
             <div class="login-brand">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo" style="height: 45px; object-fit: contain;">
-                    <h1 class="h4 mb-0">TRACER MTsN 11 Majalengka</h1>
+                <div class="login-brand-logo">
+                    <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo">
                 </div>
-                <div class="subtitle">Transkrip & Academic Ledger<br><small class="text-muted" style="font-size: 0.85rem;">Tracing Progress, Graduating Success.</small></div>
+                <h1 class="h3">TRACER MTsN 11 Majalengka</h1>
+                <div class="subtitle">Transkrip & Academic Ledger<br><small style="font-size: 0.85rem;">Tracing Progress, Graduating Success.</small></div>
             </div>
 
             <div class="login-panel p-4 p-md-5">
