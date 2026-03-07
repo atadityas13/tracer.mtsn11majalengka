@@ -643,13 +643,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <td style="width: 96px; text-align: center; vertical-align: middle; padding-right: 4px;">
                             ' . ($logoDataUri !== ''
                                 ? '<img src="' . $logoDataUri . '" style="width: 80px; height: 80px; object-fit: contain;">'
-                                : '<div style="width: 90px; height: 80px; border: 1px solid #000; margin: 0 auto; font-size: 10px; line-height: 80px; text-align: center;">LOGO</div>') . '
+                                : '<div style="width: 100px; height: 80px; border: 1px solid #000; margin: 0 auto; font-size: 10px; line-height: 80px; text-align: center;">LOGO</div>') . '
                         </td>
                         <td style="text-align: center; vertical-align: middle; padding-right: 4px;">
                             <h2 style="margin: 0; font-size: 16px; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 1.8px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
-                            <h1 style="margin: 2px 0; font-size: 25px; line-height: 1.05; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 2.4px;">MTsN 11 MAJALENGKA</h1>
-                            <p style="margin: 3px 0 0 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif; letter-spacing: 0.5px;">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467.</p>
-                            <p style="margin: 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif; letter-spacing: 0.5px;">Telp. (0233) 3600020  E-mail: mtsn11majalengka@gmail.com </p>
+                            <h1 style="margin: 2px 0; font-size: 25px; line-height: 1.05; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 2.5px;">MTsN 11 MAJALENGKA</h1>
+                            <p style="margin: 3px 0 0 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif; letter-spacing: 1px;">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467.</p>
+                            <p style="margin: 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif; letter-spacing: 1px;">Telp. (0233) 3600020  E-mail: mtsn11majalengka@gmail.com </p>
                         </td>
                     </tr>
                 </table>
