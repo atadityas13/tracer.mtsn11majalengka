@@ -5,6 +5,14 @@
  */
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
+// Set security headers to prevent browser security warnings
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()');
+header('Content-Security-Policy: default-src \'self\'; script-src \'self\' https://cdn.jsdelivr.net; style-src \'self\' https://cdn.jsdelivr.net \'unsafe-inline\'; font-src \'self\' https://cdn.jsdelivr.net; img-src \'self\' data:; connect-src \'self\'');
+
 $token = $_GET['token'] ?? '';
 
 if ($token === '') {
@@ -324,7 +332,7 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
                     <div>
                         <p class="official-kemenag">Kementerian Agama Republik Indonesia</p>
                         <h1 class="official-school">MTsN 11 MAJALENGKA</h1>
-                        <p class="official-address">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467</p>
+                        <p class="official-address">Kp. Sindanghurip Desa Maniis Kec. Cingambul<br>Kab. Majalengka, 45467</p>
                     </div>
                 </div>
                 <span class="verified-pill"><i class="bi bi-patch-check-fill"></i> Dokumen Terverifikasi</span>
