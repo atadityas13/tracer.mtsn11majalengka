@@ -445,7 +445,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $firstAlumniName = '';
         foreach ($nisnList as $idx => $nisn) {
             $stmt = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
-                s.tempat_lahir, s.tgl_lahir
+                s.tempat_lahir, s.tgl_lahir, s.nis
                 FROM alumni a 
                 LEFT JOIN siswa s ON s.nisn = a.nisn
                 WHERE a.nisn=:nisn LIMIT 1');
@@ -491,6 +491,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tempatTglLahir = strtoupper($alumni['tempat_lahir']) . ', ' . (int)$tglLahirParts[2] . ' ' . $bulanIndo[(int)$tglLahirParts[1]] . ' ' . $tglLahirParts[0];
             } elseif ($alumni['tempat_lahir']) {
                 $tempatTglLahir = strtoupper($alumni['tempat_lahir']);
+            }
+
+            $nism = '-';
+            $nisSiswa = trim((string) ($alumni['nis'] ?? ''));
+            if ($nisSiswa !== '') {
+                $nism = '121132100013' . $nisSiswa;
             }
             
             // Tahun Ajaran berdasarkan angkatan lulus
@@ -686,6 +692,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <td style="padding: 2px 0;">Nomor Induk Siswa Nasional</td>
                         <td style="padding: 2px 0;">:</td>
                         <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars($alumni['nisn']) . '</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 2px 0;">Nomor Induk Siswa Madrasah</td>
+                        <td style="padding: 2px 0;">:</td>
+                        <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars($nism) . '</td>
                     </tr>
                     <tr>
                         <td style="padding: 2px 0;">Nomor Transkrip Nilai</td>
