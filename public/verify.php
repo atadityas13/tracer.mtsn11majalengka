@@ -17,7 +17,31 @@ $token = $_GET['token'] ?? '';
 
 if ($token === '') {
     http_response_code(400);
-    die('Token verifikasi tidak valid.');
+    ?>
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Tidak Valid - MTsN 11 Majalengka</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="alert alert-warning text-center p-4" role="alert">
+                    <h4 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Token Tidak Valid</h4>
+                    <p class="mb-0">Token verifikasi tidak ditemukan. Silakan scan ulang QR Code pada dokumen transkrip.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+    <?php
+    exit;
 }
 
 $stmt = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json,
@@ -30,7 +54,33 @@ $alumni = $stmt->fetch();
 
 if (!$alumni) {
     http_response_code(404);
-    die('Dokumen tidak ditemukan. Token verifikasi tidak valid.');
+    ?>
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumen Tidak Ditemukan - MTsN 11 Majalengka</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="alert alert-danger text-center p-4" role="alert">
+                    <h4 class="alert-heading"><i class="bi bi-search"></i> Dokumen Tidak Ditemukan</h4>
+                    <p class="mb-0">Token verifikasi tidak valid atau dokumen dibatalkan. Hubungi pihak Madrasah jika ada pertanyaan.</p>
+                    <hr>
+                    <p class="mb-0"><small>Hubungi: (0233) 3600020 | mtsn11majalengka@gmail.com</small></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+    <?php
+    exit;
 }
 
 $detail = json_decode($alumni['data_ijazah_json'], true) ?: [];
@@ -358,10 +408,10 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
             <div class="card-body">
                 <div class="meta-note mb-4" role="alert">
                     <strong><i class="bi bi-shield-check"></i> Validasi Sistem Berhasil</strong><br>
-                    Dokumen dianggap asli selama Data pada Dokumen fisik identik dengan hasil verifikasi pada Sistem E-Leger MTsN 11 Majalengka.
+                    Dokumen dianggap asli selama data pada dokumen fisik identik dengan hasil verifikasi pada Sistem E-Leger MTsN 11 Majalengka.
                 </div>
 
-                <h5 class="mb-3">Data Siswa</h5>
+                <h5 class="mb-3">Meta Data</h5>
                 <table class="table table-borderless identity mb-0">
                     <tr><td style="width: 320px;">Satuan Pendidikan</td><td style="width: 20px;">:</td><td>MTsN 11 MAJALENGKA</td></tr>
                     <tr><td>NPSN</td><td>:</td><td>20278893</td></tr>
@@ -440,8 +490,8 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
         </div>
 
         <div class="text-center mt-4 text-muted">
-            <small><b>Diverifikasi otomatis oleh Sistem.</b><br>Dokumen dianggap asli selama Data pada Dokumen fisik identik dengan hasil verifikasi pada Sistem E-Leger MTsN 11 Majalengka.</small><br>
-            <small>Untuk informasi lanjut: (0233) 3600020 | mtsn11majalengka@gmail.com</small>
+            <small><b>Diverifikasi otomatis oleh sistem.</b><br>Dokumen dianggap asli selama data pada dokumen fisik identik dengan hasil verifikasi pada sistem.</small><br>
+            <small>Untuk informasi lanjut:<br>(0233) 3600020 | mtsn11majalengka@gmail.com</small>
         </div>
     </div>
 
