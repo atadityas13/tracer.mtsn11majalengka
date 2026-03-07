@@ -475,6 +475,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $text = strtolower($text);
                 return preg_replace('/[^a-z0-9]+/', '', $text) ?? '';
             };
+            $normalizeTerbilang = static function (string $text): string {
+                $text = trim((string) preg_replace('/\s+/', ' ', $text));
+                // Some helper outputs may end with a dangling "koma" for integer values.
+                $text = (string) preg_replace('/\s+koma\s*$/i', '', $text);
+                return trim($text);
+            };
 
             $nilaiByMapel = [];
             foreach ($detail as $d) {
@@ -493,7 +499,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'rata_rapor' => (int) round($rataRapor),
                     'nilai_uam' => (int) round($nilaiUam),
                     'nilai_ijazah' => $nilaiIjazah,
-                    'terbilang' => terbilang_nilai($nilaiIjazah),
+                    'terbilang' => $normalizeTerbilang(terbilang_nilai($nilaiIjazah)),
                 ];
             }
 
@@ -590,27 +596,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $avgRapor = $countNilai > 0 ? $sumRapor / $countNilai : 0;
             $avgUam = $countNilai > 0 ? $sumUam / $countNilai : 0;
             $avgIjazah = $countNilai > 0 ? $sumIjazah / $countNilai : 0;
-            $terbilangTotal = terbilang_nilai($avgIjazah);
+            $terbilangTotal = $normalizeTerbilang(terbilang_nilai($avgIjazah));
 
             $pageBreak = ($idx < count($nisnList) - 1) ? '<div style="page-break-after: always;"></div>' : '';
 
             $allHtml .= '
             <div style="font-family: Arial, sans-serif; font-size: 11px; padding: 10px 12px; color: #000;">
                 <!-- Header -->
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                     <tr>
-                        <td style="width: 70px; text-align: center; vertical-align: middle;">
+                        <td style="width: 98px; text-align: center; vertical-align: middle;">
                             ' . ($logoDataUri !== ''
-                                ? '<img src="' . $logoDataUri . '" style="width: 58px; height: 58px; object-fit: contain;">'
-                                : '<div style="width: 58px; height: 58px; border: 1px solid #000; margin: 0 auto; font-size: 9px; line-height: 58px; text-align: center;">LOGO</div>') . '
+                                ? '<img src="' . $logoDataUri . '" style="width: 82px; height: 82px; object-fit: contain;">'
+                                : '<div style="width: 82px; height: 82px; border: 1px solid #000; margin: 0 auto; font-size: 10px; line-height: 82px; text-align: center;">LOGO</div>') . '
                         </td>
                         <td style="text-align: center; vertical-align: middle;">
-                            <h2 style="margin: 0; font-size: 15px; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.2px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
-                            <h1 style="margin: 2px 0; font-size: 20px; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.3px;">MTsN 11 MAJALENGKA</h1>
-                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: Times New Roman, serif;">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467.</p>
-                            <p style="margin: 0; font-size: 10px; font-style: italic; font-family: Times New Roman, serif;">Telp. (0233) 3600020  E-mail: mtsn11majalengka@gmail.com </p>
+                            <h2 style="margin: 0; font-size: 16px; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.2px;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
+                            <h1 style="margin: 2px 0; font-size: 24px; line-height: 1.0; font-weight: bold; font-family: Times New Roman, serif; letter-spacing: 0.3px;">MTsN 11 MAJALENGKA</h1>
+                            <p style="margin: 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif;">Kp. Sindanghurip Desa Maniis Kec. Cingambul Kab. Majalengka, 45467.</p>
+                            <p style="margin: 0; font-size: 11px; font-style: italic; font-family: Times New Roman, serif;">Telp. (0233) 3600020  E-mail: mtsn11majalengka@gmail.com </p>
                         </td>
-                        <td style="width: 70px;"></td>
+                        <td style="width: 98px;"></td>
                     </tr>
                 </table>
                 
@@ -665,7 +671,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 30px;">No</th>
                             <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center;">Mata Pelajaran</th>
                             <th colspan="3" style="padding: 4px; border: 1px solid #000; text-align: center;">Nilai</th>
-                            <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 170px;">Huruf</th>
+                            <th rowspan="2" style="padding: 4px; border: 1px solid #000; text-align: center; width: 170px;">Terbilang</th>
                         </tr>
                         <tr>
                             <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 72px;">Rata-rata Rapor</th>
