@@ -70,6 +70,21 @@ $flash = get_flash();
             margin-bottom: 0;
         }
 
+        .login-brand-subtitle {
+            margin: 0.65rem 0 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.95;
+            letter-spacing: 0.03em;
+        }
+
+        .login-brand-tagline {
+            margin: 0.18rem 0 0;
+            font-size: 0.82rem;
+            font-style: italic;
+            opacity: 0.9;
+        }
+
         .login-brand-logo img {
             height: 160px;
             width: auto;
@@ -96,6 +111,14 @@ $flash = get_flash();
 
             .login-brand-logo img {
                 height: 120px;
+            }
+
+            .login-brand-subtitle {
+                font-size: 0.82rem;
+            }
+
+            .login-brand-tagline {
+                font-size: 0.76rem;
             }
         }
 
@@ -129,6 +152,8 @@ $flash = get_flash();
                 <div class="login-brand-logo">
                     <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo">
                 </div>
+                <p class="login-brand-subtitle">Transkrip &amp; Academic Ledger</p>
+                <p class="login-brand-tagline">Tracing Progress, Graduating Success.</p>
             </div>
 
             <div class="login-panel p-4 p-md-5">
