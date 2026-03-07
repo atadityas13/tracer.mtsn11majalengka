@@ -391,10 +391,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=ekspor-cetak');
         }
 
-        // Ambil data ttd dari modal
-        $titimangsa = $_POST['titimangsa'] ?? date('d F Y');
+        // Ambil data ttd dari modal (hari selalu 2 digit, contoh: 01 Januari 2026)
+        $titimangsaInput = trim((string) ($_POST['titimangsa'] ?? ''));
+        if ($titimangsaInput === '') {
+            $titimangsa = date('d F Y');
+        } elseif (preg_match('/^(\d{1,2})\s+(.+)\s+(\d{4})$/', $titimangsaInput, $mTitimangsa)) {
+            $titimangsa = str_pad((string) ((int) $mTitimangsa[1]), 2, '0', STR_PAD_LEFT) . ' ' . trim($mTitimangsa[2]) . ' ' . $mTitimangsa[3];
+        } else {
+            $titimangsa = $titimangsaInput;
+        }
         $namaKepsek = $_POST['nama_kepsek'] ?? 'Kepala Madrasah';
         $nipKepsek = $_POST['nip_kepsek'] ?? '';
+        
+        // Ambil nomor urut surat awal (tidak dibatasi digit)
+        $nomorUrutAwal = (int) ($_POST['nomor_urut'] ?? 1);
+        
+        // Ekstrak bulan dan tahun dari titimangsa untuk nomor surat
+        // Format titimangsa: "01 Januari 2026" atau "1 Januari 2026"
+        $bulanSurat = date('m');
+        $tahunSurat = date('Y');
+        if (preg_match('/\d{1,2}\s+(\w+)\s+(\d{4})/', $titimangsa, $mTiti)) {
+            $bulanIndo = ['januari' => '01', 'februari' => '02', 'maret' => '03', 'april' => '04', 
+                         'mei' => '05', 'juni' => '06', 'juli' => '07', 'agustus' => '08',
+                         'september' => '09', 'oktober' => '10', 'november' => '11', 'desember' => '12'];
+            $bulanNama = strtolower($mTiti[1]);
+            if (isset($bulanIndo[$bulanNama])) {
+                $bulanSurat = $bulanIndo[$bulanNama];
+            }
+            $tahunSurat = $mTiti[2];
+        }
 
         // Tentukan NISN yang akan dicetak
         $nisnList = [];
@@ -417,6 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dompdf->set_option('isRemoteEnabled', true);
         
         $allHtml = '';
+        $firstAlumniName = '';
         foreach ($nisnList as $idx => $nisn) {
             $stmt = db()->prepare('SELECT a.nisn, a.nama, a.angkatan_lulus, a.tanggal_kelulusan, a.nomor_surat, a.data_ijazah_json, a.verification_token,
                 s.tempat_lahir, s.tgl_lahir
@@ -428,6 +454,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!$alumni) {
                 continue;
+            }
+            if ($firstAlumniName === '') {
+                $firstAlumniName = (string) ($alumni['nama'] ?? '');
             }
 
             $detail = json_decode($alumni['data_ijazah_json'], true) ?: [];
@@ -470,6 +499,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tahunLulus = (int)$alumni['angkatan_lulus'];
                 $tahunAjaran = ($tahunLulus - 1) . '/' . $tahunLulus;
             }
+            
+            // Generate nomor surat dengan format: {nomor}/Mts.10.89/PP.00.5/{bulan}/{tahun}
+            // Untuk bulk, nomor auto-increment per siswa
+            // Bulan dan tahun diambil dari titimangsa, bukan dari tanggal kelulusan
+            $nomorUrutSekarang = $nomorUrutAwal + $idx;
+            $nomorSuratLengkap = $nomorUrutSekarang . '/Mts.10.89/PP.00.5/' . $bulanSurat . '/' . $tahunSurat;
 
             $normalizeMapel = static function (string $text): string {
                 $text = strtolower($text);
@@ -655,7 +690,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <tr>
                         <td style="padding: 2px 0;">Nomor Transkrip Nilai</td>
                         <td style="padding: 2px 0;">:</td>
-                        <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars($alumni['nomor_surat'] ?? '-') . '</td>
+                        <td style="padding: 2px 0 2px 10px;">' . htmlspecialchars($nomorSuratLengkap) . '</td>
                     </tr>
                     <tr>
                         <td style="padding: 2px 0;">Tanggal Kelulusan</td>
@@ -716,8 +751,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
         
-        $filename = $action === 'bulk_transkrip' ? 'transkrip_bulk_' . $angkatanFilter . '.pdf' : 'transkrip_' . $nisnList[0] . '.pdf';
-        $dompdf->stream($filename, ['Attachment' => true]);
+        if ($action === 'bulk_transkrip') {
+            $filename = 'transkrip_bulk_' . $angkatanFilter . '.pdf';
+        } else {
+            $safeName = trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $firstAlumniName), '_');
+            if ($safeName === '') {
+                $safeName = 'transkrip_' . $nisnList[0];
+            }
+            $filename = $safeName . '.pdf';
+        }
+        // Open PDF in browser first so users can print/download from viewer controls.
+        $dompdf->stream($filename, ['Attachment' => false]);
         exit;
     }
 }
@@ -788,6 +832,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     <input type="hidden" name="titimangsa" id="titimangsa_value">
                     <input type="hidden" name="nama_kepsek" id="nama_kepsek_value">
                     <input type="hidden" name="nip_kepsek" id="nip_kepsek_value">
+                    <input type="hidden" name="nomor_urut" id="nomor_urut_value">
                     
                     <div class="col-md-8">
                         <label class="form-label">Pilih Alumni (Ketik Nama atau NISN)</label>
@@ -824,6 +869,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     <input type="hidden" name="titimangsa" id="titimangsa_bulk">
                     <input type="hidden" name="nama_kepsek" id="nama_kepsek_bulk">
                     <input type="hidden" name="nip_kepsek" id="nip_kepsek_bulk">
+                    <input type="hidden" name="nomor_urut" id="nomor_urut_bulk">
                     
                     <div class="col-md-8">
                         <label class="form-label">Pilih Angkatan</label>
@@ -859,17 +905,22 @@ require dirname(__DIR__) . '/partials/header.php';
             </div>
             <div class="modal-body">
                 <div class="mb-3">
+                    <label class="form-label">Nomor Urut Surat</label>
+                    <input type="number" id="input_nomor_urut" class="form-control" placeholder="1" min="1" required>
+                    <small class="form-text text-muted">Nomor urut surat (contoh: 1, 25, 1001). Untuk cetak per angkatan, nomor ini akan auto-increment.</small>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Titimangsa (Tanggal)</label>
                     <input type="date" id="input_titimangsa" class="form-control" value="<?= date('Y-m-d') ?>" required>
                     <small class="form-text text-muted">Contoh: 15 Juni 2024</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Nama Kepala Madrasah</label>
-                    <input type="text" id="input_nama_kepsek" class="form-control" placeholder="Nama Lengkap" required>
+                    <input type="text" id="input_nama_kepsek" class="form-control" placeholder="Nama Lengkap" value="H. Jajang Gunawan, S.Ag., M.Pd.I." required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">NIP Kepala Madrasah</label>
-                    <input type="text" id="input_nip_kepsek" class="form-control" placeholder="NIP" required>
+                    <input type="text" id="input_nip_kepsek" class="form-control" placeholder="NIP" value="196708251992031003" required>
                 </div>
             </div>
             <div class="modal-footer">
@@ -906,14 +957,19 @@ function showModalTTD(formId) {
 }
 
 function submitWithTTD() {
+    const nomorUrut = document.getElementById('input_nomor_urut').value;
     const tgl = document.getElementById('input_titimangsa').value;
     const nama = document.getElementById('input_nama_kepsek').value;
     const nip = document.getElementById('input_nip_kepsek').value;
 
-    if (!tgl || !nama || !nip) {
+    if (!nomorUrut || !tgl || !nama || !nip) {
         alert('Semua field wajib diisi!');
         return;
     }
+    
+    // Simpan ke localStorage untuk persistensi
+    localStorage.setItem('kepsek_nama', nama);
+    localStorage.setItem('kepsek_nip', nip);
 
     // Format tanggal ke Indonesia
     const bulanIndo = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -923,10 +979,12 @@ function submitWithTTD() {
     const form = document.getElementById(targetFormId);
     
     if (targetFormId === 'formTranskrip') {
+        document.getElementById('nomor_urut_value').value = nomorUrut;
         document.getElementById('titimangsa_value').value = titimangsa;
         document.getElementById('nama_kepsek_value').value = nama;
         document.getElementById('nip_kepsek_value').value = nip;
     } else {
+        document.getElementById('nomor_urut_bulk').value = nomorUrut;
         document.getElementById('titimangsa_bulk').value = titimangsa;
         document.getElementById('nama_kepsek_bulk').value = nama;
         document.getElementById('nip_kepsek_bulk').value = nip;
@@ -937,6 +995,16 @@ function submitWithTTD() {
 
 // Initialize search on alumni select
 document.addEventListener('DOMContentLoaded', function() {
+    // Load prefilled dari localStorage jika ada
+    const savedNama = localStorage.getItem('kepsek_nama');
+    const savedNip = localStorage.getItem('kepsek_nip');
+    if (savedNama) {
+        document.getElementById('input_nama_kepsek').value = savedNama;
+    }
+    if (savedNip) {
+        document.getElementById('input_nip_kepsek').value = savedNip;
+    }
+    
     const selectAlumni = document.getElementById('selectAlumni');
     if (selectAlumni) {
         // Simple search filter
