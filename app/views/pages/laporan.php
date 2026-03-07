@@ -462,15 +462,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $rows = '';
-            foreach ($detail as $d) {
+            $rataTotal = 0;
+            $terbilangTotal = '';
+            foreach ($detail as $idx => $d) {
+                $rataTotal += $d['nilai_ijazah'];
                 $rows .= '<tr>
-                    <td style="padding: 8px; border: 1px solid #333;">' . htmlspecialchars($d['mapel']) . '</td>
-                    <td style="padding: 8px; border: 1px solid #333; text-align: center;">' . htmlspecialchars((string) $d['rata_rapor']) . '</td>
-                    <td style="padding: 8px; border: 1px solid #333; text-align: center;">' . htmlspecialchars((string) $d['nilai_uam']) . '</td>
-                    <td style="padding: 8px; border: 1px solid #333; text-align: center;"><strong>' . htmlspecialchars((string) $d['nilai_ijazah']) . '</strong></td>
-                    <td style="padding: 8px; border: 1px solid #333;">' . htmlspecialchars($d['terbilang']) . '</td>
+                    <td style="padding: 8px; border: 1px solid #000;">' . ($idx + 1) . '. ' . htmlspecialchars($d['mapel']) . '</td>
+                    <td style="padding: 8px; border: 1px solid #000; text-align: center;">' . htmlspecialchars((string) $d['nilai_ijazah']) . '</td>
+                    <td style="padding: 8px; border: 1px solid #000;">' . htmlspecialchars($d['terbilang']) . '</td>
                 </tr>';
             }
+            // Calculate average
+            $rataIjazah = !empty($detail) ? $rataTotal / count($detail) : 0;
+            $terbilangTotal = terbilang_nilai($rataIjazah);
 
             $pageBreak = ($idx < count($nisnList) - 1) ? '<div style="page-break-after: always;"></div>' : '';
 
@@ -493,81 +497,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <hr style="border: 2px solid #000; margin: 10px 0;">
                 
-                <h3 style="text-align: center; margin: 20px 0; font-size: 14px; font-weight: bold; text-decoration: underline;">TRANSKRIP NILAI IJAZAH</h3>
+                <h3 style="text-align: center; margin: 20px 0; font-size: 14px; font-weight: bold; text-decoration: underline;">TRANSKRIP NILAI</h3>
                 
-                <table style="width: 100%; margin-bottom: 20px;">
-                    <tr>
-                        <td style="width: 40%;">Nomor Transkrip</td>
-                        <td style="width: 5%;">:</td>
-                        <td>' . htmlspecialchars($alumni['nomor_surat'] ?? '-') . '</td>
+                <table style="width: 100%; margin-bottom: 20px; font-size: 11px;">
+                    <tr style="border: 1px solid #000;">
+                        <td style="width: 35%; padding: 5px; border: 1px solid #000;">Satuan Pendidikan</td>
+                        <td style="width: 2%; padding: 5px; border: 1px solid #000;">:</td>
+                        <td style="padding: 5px; border: 1px solid #000;">MTsN 11 MAJALENGKA</td>
                     </tr>
                     <tr>
-                        <td>Tahun Ajaran</td>
-                        <td>:</td>
-                        <td>' . htmlspecialchars($tahunAjaran) . '</td>
-                    </tr>
-                </table>
-
-                <table style="width: 100%; margin-bottom: 20px;">
-                    <tr>
-                        <td style="width: 40%;">Satuan Pendidikan</td>
-                        <td style="width: 5%;">:</td>
-                        <td>MTsN 11 MAJALENGKA</td>
+                        <td style="padding: 5px; border: 1px solid #000;">Nomor Pokok Sekolah Nasional</td>
+                        <td style="padding: 5px; border: 1px solid #000;">:</td>
+                        <td style="padding: 5px; border: 1px solid #000;">20278893</td>
                     </tr>
                     <tr>
-                        <td>Nomor Pokok Sekolah Nasional</td>
-                        <td>:</td>
-                        <td>20278893</td>
+                        <td style="padding: 5px; border: 1px solid #000;">Nama Lengkap</td>
+                        <td style="padding: 5px; border: 1px solid #000;">:</td>
+                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars(strtoupper($alumni['nama'])) . '</td>
                     </tr>
                     <tr>
-                        <td>Nama Lengkap</td>
-                        <td>:</td>
-                        <td>' . htmlspecialchars(strtoupper($alumni['nama'])) . '</td>
+                        <td style="padding: 5px; border: 1px solid #000;">Tempat dan Tanggal Lahir</td>
+                        <td style="padding: 5px; border: 1px solid #000;">:</td>
+                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars($tempatTglLahir) . '</td>
                     </tr>
                     <tr>
-                        <td>Tempat dan Tanggal Lahir</td>
-                        <td>:</td>
-                        <td>' . htmlspecialchars($tempatTglLahir) . '</td>
+                        <td style="padding: 5px; border: 1px solid #000;">Nomor Induk Siswa Nasional</td>
+                        <td style="padding: 5px; border: 1px solid #000;">:</td>
+                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars($alumni['nisn']) . '</td>
                     </tr>
                     <tr>
-                        <td>Nomor Induk Siswa Nasional</td>
-                        <td>:</td>
-                        <td>' . htmlspecialchars($alumni['nisn']) . '</td>
+                        <td style="padding: 5px; border: 1px solid #000;">Nomor Izazah</td>
+                        <td style="padding: 5px; border: 1px solid #000;">:</td>
+                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars($alumni['nomor_surat'] ?? '-') . '</td>
                     </tr>
                     <tr>
-                        <td>Tanggal Kelulusan</td>
-                        <td>:</td>
-                        <td>' . htmlspecialchars($tglKelulusanFormat) . '</td>
+                        <td style="padding: 5px; border: 1px solid #000;">Tanggal Kelulusan</td>
+                        <td style="padding: 5px; border: 1px solid #000;">:</td>
+                        <td style="padding: 5px; border: 1px solid #000;">' . htmlspecialchars($tglKelulusanFormat) . '</td>
                     </tr>
                 </table>
-
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #333;">
+                
+                <p style="font-weight: bold; margin: 15px 0 5px 0; font-size: 11px;">Mata Pelajaran</p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #000; font-size: 11px;">
                     <thead>
-                        <tr style="background-color: #f0f0f0;">
-                            <th style="padding: 10px; border: 1px solid #333; text-align: left;">Mata Pelajaran</th>
-                            <th style="padding: 10px; border: 1px solid #333; text-align: center; width: 10%;">Rata Rapor</th>
-                            <th style="padding: 10px; border: 1px solid #333; text-align: center; width: 10%;">Nilai UAM</th>
-                            <th style="padding: 10px; border: 1px solid #333; text-align: center; width: 10%;">Nilai Ijazah</th>
-                            <th style="padding: 10px; border: 1px solid #333; width: 25%;">Terbilang</th>
+                        <tr style="background-color: #fff;">
+                            <th style="padding: 8px; border: 1px solid #000; text-align: left; font-weight: bold;">Mata Pelajaran</th>
+                            <th style="padding: 8px; border: 1px solid #000; text-align: center; font-weight: bold; width: 15%;">Nilai</th>
+                            <th style="padding: 8px; border: 1px solid #000; text-align: left; font-weight: bold;">Huruf</th>
                         </tr>
                     </thead>
                     <tbody>
                         ' . $rows . '
+                        <tr style="background-color: #f5f5f5;">
+                            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">Rata-Rata</td>
+                            <td style="padding: 8px; border: 1px solid #000; text-align: center; font-weight: bold;">' . number_format($rataIjazah, 2, ',', '.') . '</td>
+                            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">' . htmlspecialchars($terbilangTotal) . '</td>
+                        </tr>
                     </tbody>
                 </table>
 
-                <table style="width: 100%;">
+                <table style="width: 100%; margin-top: 30px;">
                     <tr>
-                        <td style="width: 50%; vertical-align: top; text-align: center;">
-                            <img src="' . $qrCodeUrl . '" style="width: 100px; height: 100px; margin-top: 10px;"><br>
-                            <small style="font-size: 9px;">Scan untuk verifikasi</small>
+                        <td style="width: 35%; vertical-align: top; text-align: center;">
+                            <img src="' . $qrCodeUrl . '" style="width: 80px; height: 80px;"><br>
+                            <small style="font-size: 9px;">QR Code Verifikasi</small>
                         </td>
-                        <td style="width: 50%; vertical-align: top; text-align: center;">
-                            <p style="margin: 0;">Majalengka, ' . htmlspecialchars($titimangsa) . '</p>
-                            <p style="margin: 5px 0;">Kepala Madrasah,</p>
-                            <br><br><br>
-                            <p style="margin: 0; font-weight: bold; text-decoration: underline;">' . htmlspecialchars($namaKepsek) . '</p>
-                            <p style="margin: 0;">NIP. ' . htmlspecialchars($nipKepsek) . '</p>
+                        <td style="width: 65%; text-align: center; vertical-align: bottom; padding-top: 20px;">
+                            <p style="margin: 0; font-size: 11px;">Majalengka, ' . htmlspecialchars($titimangsa) . '</p>
+                            <p style="margin: 5px 0 30px 0; font-size: 11px;">Kepala Madrasah</p>
+                            <p style="margin: 0; font-weight: bold; text-decoration: underline; font-size: 11px;">' . htmlspecialchars($namaKepsek) . '</p>
+                            <p style="margin: 0; font-size: 9px;">NIP. ' . htmlspecialchars($nipKepsek) . '</p>
                         </td>
                     </tr>
                 </table>
