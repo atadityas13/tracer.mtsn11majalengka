@@ -35,7 +35,9 @@ $user = current_user();
 $flash = get_flash();
 $page = $_GET['page'] ?? 'dashboard';
 $isAdmin = ($user['role'] ?? '') === 'admin';
-$isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tools'], true);
+$isKurikulum = ($user['role'] ?? '') === 'kurikulum';
+$canManageTokens = $isAdmin || $isKurikulum;
+$isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tools', 'upload-token-management'], true);
 ?>
 <!doctype html>
 <html lang="id">
@@ -84,6 +86,11 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
                 <a class="sidebar-link <?= in_array($page, ['ekspor-cetak', 'laporan'], true) ? 'active' : '' ?>" href="index.php?page=ekspor-cetak">
                     <i class="bi bi-printer"></i> Ekspor dan Cetak
                 </a>
+                <?php if ($canManageTokens): ?>
+                    <a class="sidebar-link <?= $page === 'upload-token-management' ? 'active' : '' ?>" href="index.php?page=upload-token-management">
+                        <i class="bi bi-key"></i> Manajemen Token Upload
+                    </a>
+                <?php endif; ?>
                 <?php if ($isAdmin): ?>
                     <button class="sidebar-link sidebar-toggle w-100 border-0 <?= $isSettingPage ? 'active' : '' ?>"
                             type="button"

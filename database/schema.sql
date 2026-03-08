@@ -123,3 +123,33 @@ ON DUPLICATE KEY UPDATE nama_mapel=VALUES(nama_mapel), urutan=VALUES(urutan);
 INSERT INTO users (username, password, nama_lengkap, role)
 SELECT 'superadmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Admin', 'admin'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username='superadmin');
+
+-- Migration: Add upload token verification system
+-- Date: 2026-03-09
+-- Desc: Support for OTP-based upload verification (manual or daily auto)
+
+ALTER TABLE pengaturan_akademik 
+ADD COLUMN IF NOT EXISTS require_upload_token TINYINT(1) NOT NULL DEFAULT 1 AFTER is_aktif,
+ADD COLUMN IF NOT EXISTS token_mode ENUM('manual','daily','disabled') NOT NULL DEFAULT 'daily' AFTER require_upload_token;
+
+CREATE TABLE IF NOT EXISTS upload_token (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    token VARCHAR(50) NOT NULL UNIQUE,
+    token_type ENUM('manual','daily') NOT NULL DEFAULT 'daily',
+    created_by VARCHAR(120) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL,
+    is_used TINYINT(1) NOT NULL DEFAULT 0,
+    used_by VARCHAR(120) NULL,
+    used_at TIMESTAMP NULL,
+    created_tahun_ajaran VARCHAR(20),
+    created_semester_aktif ENUM('GANJIL','GENAP'),
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    CONSTRAINT fk_token_created_by FOREIGN KEY (created_by) REFERENCES users(username) ON DELETE CASCADE,
+    CONSTRAINT fk_token_used_by FOREIGN KEY (used_by) REFERENCES users(username) ON DELETE SET NULL,
+    INDEX idx_token (token),
+    INDEX idx_created_at (created_at),
+    INDEX idx_expires_at (expires_at),
+    INDEX idx_is_used (is_used)
+);

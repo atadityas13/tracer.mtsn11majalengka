@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
-$page = $_GET['page'] ?? 'dashboard';
+$page = $_GET['page'] ?? 'home';
 
-$publicPages = ['login'];
+$publicPages = ['home', 'login'];
 if (!in_array($page, $publicPages, true)) {
     require_login();
 }
 
 switch ($page) {
+    case 'home':
+        require dirname(__DIR__) . '/app/views/pages/home_rdm_upload.php';
+        break;
     case 'login':
         require dirname(__DIR__) . '/app/views/pages/login.php';
         break;
@@ -68,7 +71,11 @@ switch ($page) {
         require_role(['admin', 'kurikulum']);
         require dirname(__DIR__) . '/app/views/pages/profile.php';
         break;
+    case 'upload-token-management':
+        require_role(['admin', 'kurikulum']);
+        require dirname(__DIR__) . '/app/views/pages/upload_token_management.php';
+        break;
     default:
         set_flash('error', 'Halaman tidak ditemukan.');
-        redirect('index.php?page=dashboard');
+        redirect('index.php?page=home');
 }

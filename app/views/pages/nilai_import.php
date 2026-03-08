@@ -610,6 +610,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        $nisnTidakCocok = [];
+        foreach ($nisnList as $nisnFile) {
+            if (!isset($siswaByNisn[$nisnFile])) {
+                $nisnTidakCocok[] = $nisnFile;
+            }
+        }
+
+        if (count($nisnTidakCocok) > 0) {
+            $previewMissing = implode(', ', array_slice($nisnTidakCocok, 0, 10));
+            $suffix = count($nisnTidakCocok) > 10 ? ' dan lainnya' : '';
+            set_flash('error', 'Preview dibatalkan. Ditemukan ' . count($nisnTidakCocok) . ' NISN pada file yang tidak cocok dengan data siswa aktif aplikasi: ' . $previewMissing . $suffix . '.');
+            redirect('index.php?page=data-nilai');
+        }
+
         $stNilaiBySemester = db()->prepare('SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND tahun_ajaran=:ta');
         $nilaiCache = [];
 
@@ -700,7 +714,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $nilai = (float) $rawNilai;
-                if ($nilai < 70 || $nilai > 100) {
+                if ($nilai < 7 || $nilai > 100) {
                     $skipRange++;
                     continue;
                 }
@@ -862,7 +876,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $nilai = (float) $rawNilai;
-                if ($nilai < 70 || $nilai > 100) {
+                if ($nilai < 7 || $nilai > 100) {
                     $skipRange++;
                     continue;
                 }

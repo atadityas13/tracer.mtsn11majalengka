@@ -289,6 +289,201 @@ if (!function_exists('hitung_tahun_ajaran_dari_angkatan')) {
         $tahunAwal = (int) $tahunAwal;
 
         // Hitung offset tahun berdasarkan semester
+        $offsetTahun = (int) floor(($currentSemester - 1) / 2);
+
+        // Hitung tahun ajaran target
+        $tahunAjaranAwal = $tahunAwal + $offsetTahun;
+        $tahunAjaranAkhir = $tahunAjaranAwal + 1;
+
+        return $tahunAjaranAwal . '/' . $tahunAjaranAkhir;
+    }
+}
+
+if (!function_exists('get_upload_token_setting')) {
+    /**
+     * Get upload token verification settings for active semester
+     * @return array ['require_token' => bool, 'token_mode' => 'manual|daily|disabled']
+     */
+    function get_upload_token_setting(): array
+    {
+        try {
+            $stmt = db()->query("SELECT require_upload_token, token_mode FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1");
+            $row = $stmt->fetch();
+            
+            if (!$row) {
+                return ['require_token' => true, 'token_mode' => 'daily'];
+            }
+
+            return [
+                'require_token' => $row['require_upload_token'] == 1,
+                'token_mode' => $row['token_mode'] ?? 'daily'
+            ];
+        } catch (Exception $e) {
+            return ['require_token' => true, 'token_mode' => 'daily'];
+        }
+    }
+}
+
+if (!function_exists('get_current_upload_token')) {
+    /**
+     * Get valid current upload token if exists
+     * Token is valid if: not expired, not used, for current academic period
+     * @return string|null The token string or null if no valid token
+     */
+    function get_current_upload_token(): ?string
+    {
+        try {
+            $setting = setting_akademik();
+            $stmt = db()->prepare("
+                SELECT token FROM upload_token 
+                WHERE created_tahun_ajaran = :ta 
+                AND created_semester_aktif = :sem
+                AND (expires_at IS NULL OR expires_at > NOW())
+                AND is_used = 0
+                ORDER BY created_at DESC 
+                LIMIT 1
+            ");
+            $stmt->execute([
+                'ta' => $setting['tahun_ajaran'],
+                'sem' => $setting['semester_aktif']
+            ]);
+            
+            $row = $stmt->fetch();
+            return $row ? $row['token'] : null;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('generate_upload_token')) {
+    /**
+     * Generate new upload token (manual or daily auto)
+     * @param string $token_type 'manual' or 'daily'
+     * @param string|null $created_by Username of admin who created it
+     * @param int $expiry_hours Hours until token expires (0 = no expiry)
+     * @return string|false New token string or false on error
+     */
+    function generate_upload_token(string $token_type = 'daily', ?string $created_by = null, int $expiry_hours = 24): string|false
+    {
+        try {
+            $setting = setting_akademik();
+            $currentUser = current_user();
+            $creator = $created_by ?? ($currentUser['username'] ?? 'system');
+            
+            // Generate random token (8 chars alphanumeric)
+            $token = strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+            
+            $expiresAt = $expiry_hours > 0 ? date('Y-m-d H:i:s', time() + ($expiry_hours * 3600)) : null;
+            
+            $stmt = db()->prepare("
+                INSERT INTO upload_token 
+                (token, token_type, created_by, expires_at, created_tahun_ajaran, created_semester_aktif, ip_address, user_agent)
+                VALUES (:token, :type, :creator, :expires, :ta, :sem, :ip, :ua)
+            ");
+            
+            $stmt->execute([
+                'token' => $token,
+                'type' => $token_type,
+                'creator' => $creator,
+                'expires' => $expiresAt,
+                'ta' => $setting['tahun_ajaran'],
+                'sem' => $setting['semester_aktif'],
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                'ua' => substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 255)
+            ]);
+            
+            return $token;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+}
+
+if (!function_exists('validate_upload_token')) {
+    /**
+     * Validate upload token from user input
+     * @param string $token_input Token string to validate
+     * @return bool True if valid and not expired/used
+     */
+    function validate_upload_token(string $token_input): bool
+    {
+        try {
+            $setting = setting_akademik();
+            $tokenInput = strtoupper(trim($token_input));
+            
+            $stmt = db()->prepare("
+                SELECT id, is_used, expires_at FROM upload_token
+                WHERE token = :token
+                AND created_tahun_ajaran = :ta 
+                AND created_semester_aktif = :sem
+            ");
+            
+            $stmt->execute([
+                'token' => $tokenInput,
+                'ta' => $setting['tahun_ajaran'],
+                'sem' => $setting['semester_aktif']
+            ]);
+            
+            $row = $stmt->fetch();
+            
+            if (!$row) {
+                return false;
+            }
+            
+            // Check if already used
+            if ($row['is_used'] == 1) {
+                return false;
+            }
+            
+            // Check if expired
+            if ($row['expires_at'] && strtotime($row['expires_at']) < time()) {
+                return false;
+            }
+            
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+}
+
+if (!function_exists('mark_upload_token_used')) {
+    /**
+     * Mark upload token as used after successful upload
+     * @param string $token_input Token string
+     * @param string|null $used_by Username of user who used it
+     * @return bool True if marked successfully
+     */
+    function mark_upload_token_used(string $token_input, ?string $used_by = null): bool
+    {
+        try {
+            $setting = setting_akademik();
+            $tokenInput = strtoupper(trim($token_input));
+            $currentUser = current_user();
+            $userWhoUsed = $used_by ?? ($currentUser['username'] ?? 'unknown');
+            
+            $stmt = db()->prepare("
+                UPDATE upload_token 
+                SET is_used = 1, used_by = :used_by, used_at = NOW()
+                WHERE token = :token
+                AND created_tahun_ajaran = :ta 
+                AND created_semester_aktif = :sem
+            ");
+            
+            return $stmt->execute([
+                'token' => $tokenInput,
+                'used_by' => $userWhoUsed,
+                'ta' => $setting['tahun_ajaran'],
+                'sem' => $setting['semester_aktif']
+            ]);
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+}
+
+        // Hitung offset tahun berdasarkan semester
         // Semester 1,2 -> offset 0
         // Semester 3,4 -> offset 1
         // Semester 5,6 -> offset 2
