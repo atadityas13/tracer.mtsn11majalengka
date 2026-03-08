@@ -339,28 +339,35 @@ body {
   align-items: center;
   justify-content: center;
   color: #052e16;
-  background: rgba(220, 252, 231, 0.6);
+  background: linear-gradient(135deg, #065f46 0%, #10b981 100%);
   text-decoration: none;
-  padding: 0.4rem 0.6rem;
-  border-radius: 0.75rem;
+  padding: 0.52rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(5, 150, 105, 0.45);
+  box-shadow: 0 10px 24px rgba(6, 78, 59, 0.28);
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .landing-brand:hover {
-  background: rgba(220, 252, 231, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(6, 78, 59, 0.34);
+  filter: saturate(1.08);
 }
 
 .landing-brand:focus-visible {
-  outline: 2px solid rgba(6, 78, 59, 0.35);
+  outline: 2px solid rgba(6, 78, 59, 0.5);
   outline-offset: 2px;
 }
 
 .landing-brand .logo-tracer {
-  width: 82px;
-  height: 82px;
+  width: 92px;
+  height: 92px;
+  background: #ffffff;
+  border-radius: 0.72rem;
+  padding: 0.32rem;
   object-fit: contain;
-  filter: drop-shadow(0 6px 16px rgba(6, 78, 59, 0.2));
+  filter: drop-shadow(0 8px 18px rgba(6, 78, 59, 0.22));
 }
 
 .landing-login-btn {
@@ -720,8 +727,8 @@ body {
   }
 
   .landing-brand .logo-tracer {
-    width: 64px;
-    height: 64px;
+    width: 74px;
+    height: 74px;
   }
 
   .upload-progress-head {
