@@ -736,10 +736,12 @@ $isLoggedIn = current_user() !== null;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(app_config('name')) ?> - Upload Nilai RDM</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/logo-tracer-mtsn11majalengka.png">
+    <link rel="apple-touch-icon" href="assets/logo-tracer-mtsn11majalengka.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="icon" href="assets/logo-tracer-mtsn11majalengka.png" type="image/png">
 </head>
 <body>
 <div class="landing-shell">
@@ -747,13 +749,15 @@ $isLoggedIn = current_user() !== null;
     <div class="landing-blur two"></div>
 
     <header class="landing-topbar container py-3 py-md-4">
-        <button type="button" class="landing-brand border-0" data-bs-toggle="modal" data-bs-target="#aboutTracerModal" aria-label="Tentang Aplikasi TRACER">
-            <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo">
-            <span>
-                <strong>TRACER</strong>
-                <small>MTsN 11 Majalengka</small>
+        <div class="landing-brand-group">
+            <img src="assets/logo-kemenag.png" alt="Logo Kemenag" class="logo-kemenag-static">
+            <button type="button" class="landing-brand border-0" data-bs-toggle="modal" data-bs-target="#aboutTracerModal" aria-label="Tentang Aplikasi TRACER">
+                <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo" class="logo-tracer">
+                <span>
+                <small><strong>Tracing Progress,<br>Graduating Success.</strong></small>
             </span>
-        </button>
+            </button>
+        </div>
 
         <a href="index.php?page=<?= $isLoggedIn ? 'dashboard' : 'login' ?>" class="btn btn-light landing-login-btn">
             <i class="bi bi-box-arrow-in-right me-1"></i>
@@ -773,7 +777,6 @@ $isLoggedIn = current_user() !== null;
         <section class="landing-intro landing-reveal mb-3" style="--reveal-delay: 40ms;">
             <p class="landing-kicker mb-1">TRACER | Transkrip &amp; Academic Ledger</p>
             <h1 class="landing-title mb-1">Portal Upload Nilai RDM</h1>
-            <p class="landing-subtitle mb-2">Tracing Progress, Graduating Success. Unggah nilai rapor berbasis RDM dengan validasi ketat, selaras semester aktif, dan siap finalisasi.</p>
             <div class="landing-flow" aria-label="Alur proses upload">
                 <span><i class="bi bi-1-circle"></i> Unggah File</span>
                 <span><i class="bi bi-2-circle"></i> Preview Validasi</span>
@@ -788,7 +791,7 @@ $isLoggedIn = current_user() !== null;
                         <div class="landing-quick-meta mb-3">
                             <span><i class="bi bi-calendar2-check"></i> TA Aktif: <?= e((string) $setting['tahun_ajaran']) ?></span>
                             <span><i class="bi bi-layers"></i> Semester Target: <?= e($targetSemesterLabel) ?></span>
-                            <span><i class="bi bi-123"></i> Nilai: 7-100</span>
+                            <span><i class="bi bi-123"></i> Nilai: 70-100</span>
                             <span><i class="bi bi-key"></i> Token: <?= $requireUploadToken && $tokenMode !== 'disabled' ? 'Aktif' : 'Nonaktif' ?></span>
                         </div>
 
@@ -813,7 +816,7 @@ $isLoggedIn = current_user() !== null;
                                     </button>
                                     <span id="fileNameLabel" class="file-name-label">Belum ada file dipilih</span>
                                 </div>
-                                <div class="form-text">Pastikan file berasal dari template RDM asli agar pemetaan mapel berjalan otomatis.</div>
+                                <div class="form-text">Pastikan file berasal dari ekspor leger RDM asli agar terbaca oleh sistem.</div>
                             </div>
                             <div class="col-12 d-grid mt-1">
                                 <button id="uploadSubmitBtn" type="submit" class="btn landing-upload-btn">
@@ -828,7 +831,7 @@ $isLoggedIn = current_user() !== null;
             <div class="col-lg-5">
                 <section class="landing-rules-slider card border-0 shadow-sm h-100">
                     <div class="card-header bg-white border-0 pt-3 pb-0">
-                        <h2 class="h6 mb-2 text-success-emphasis">Ketentuan Upload</h2>
+                        <h2 class="h6 mb-2 text-success-emphasis">CATATAN</h2>
                     </div>
                     <div class="card-body p-3 pt-2">
                         <div id="rulesCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="6500">
@@ -839,22 +842,22 @@ $isLoggedIn = current_user() !== null;
                             <div class="carousel-inner">
                                 <div class="carousel-item active">
                                     <div class="rule-slide-card">
-                                        <div class="rule-slide-title"><i class="bi bi-journal-check me-1"></i>Ketentuan Inti</div>
+                                        <div class="rule-slide-title"><i class="bi bi-journal-check me-1"></i>Ketentuan</div>
                                         <ul class="landing-checklist-compact mb-0">
                                             <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong>.</li>
                                             <li>Kolom <strong>NISN</strong> wajib tersedia.</li>
-                                            <li>Nilai valid pada rentang <strong>7-100</strong>.</li>
-                                            <li>Data finalisasi tidak akan ditimpa.</li>
+                                            <li>Nilai valid pada rentang <strong>70-100</strong>.</li>
+                                            <li>Semua siswa dalam leger harus terdaftar pada aplikasi.</li>
                                         </ul>
                                     </div>
                                 </div>
                                 <div class="carousel-item">
                                     <div class="rule-slide-card">
-                                        <div class="rule-slide-title"><i class="bi bi-shield-lock me-1"></i>Validasi Ketat Sistem</div>
+                                        <div class="rule-slide-title"><i class="bi bi-shield-lock me-1"></i>Validasi Sistem</div>
                                         <ul class="landing-checklist-compact mb-0">
-                                            <li>File harus hasil ekspor asli RDM.</li>
-                                            <li>Jika 1 NISN tidak ditemukan, upload dibatalkan penuh.</li>
-                                            <li>Jika 1 siswa sudah memiliki nilai TA aktif, upload dibatalkan penuh.</li>
+                                            <li>File harus hasil ekspor leger RDM.</li>
+                                            <li>Jika NISN tidak ditemukan, upload dibatalkan</li>
+                                            <li>Jika siswa sudah memiliki nilai TA aktif, upload dibatalkan.</li>
                                             <li>Mapel dibaca otomatis dari header template.</li>
                                         </ul>
                                     </div>
@@ -1004,6 +1007,10 @@ $isLoggedIn = current_user() !== null;
             <div class="landing-footer-title">TRACER MTsN 11 Majalengka</div>
             <div class="landing-footer-desc">Sistem manajemen transkrip nilai akademik berbasis web untuk MTsN 11 Majalengka, terintegrasi dari input nilai sampai proses kelulusan.</div>
             <div class="landing-footer-tagline">Tracing Progress, Graduating Success.</div>
+            <div class="landing-footer-dev mt-3">
+                <div>© <?= date('Y') ?> MTsN 11 Majalengka</div>
+                <div>• TRACER v1.0.0 •<br>Developed by <a href="https://www.instagram.com/atadityas_13/" class="link-clean" target="_blank" rel="noopener noreferrer">A.T. Aditya</a></div>
+            </div>
         </div>
     </footer>
 </div>

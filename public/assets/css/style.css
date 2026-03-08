@@ -321,21 +321,34 @@ body {
   gap: 1rem;
 }
 
+.landing-brand-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.logo-kemenag-static {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.12));
+}
+
 .landing-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
+  justify-content: center;
   color: #052e16;
-  background: transparent;
+  background: rgba(220, 252, 231, 0.6);
   text-decoration: none;
-  padding: 0.25rem 0.35rem;
+  padding: 0.4rem 0.6rem;
   border-radius: 0.75rem;
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
 .landing-brand:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(220, 252, 231, 0.9);
 }
 
 .landing-brand:focus-visible {
@@ -343,29 +356,11 @@ body {
   outline-offset: 2px;
 }
 
-.landing-brand img {
-  width: 62px;
-  height: 62px;
+.landing-brand .logo-tracer {
+  width: 82px;
+  height: 82px;
   object-fit: contain;
-  filter: drop-shadow(0 8px 14px rgba(6, 78, 59, 0.18));
-}
-
-.landing-brand span {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-}
-
-.landing-brand strong {
-  font-size: 1.15rem;
-  line-height: 1.05;
-  letter-spacing: 0.05em;
-}
-
-.landing-brand small {
-  color: #166534;
-  font-size: 0.86rem;
-  line-height: 1.05;
+  filter: drop-shadow(0 6px 16px rgba(6, 78, 59, 0.2));
 }
 
 .landing-login-btn {
@@ -674,6 +669,19 @@ body {
   font-weight: 600;
 }
 
+.landing-footer-dev {
+  padding-top: 0.85rem;
+  margin-top: 0.65rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .landing-reveal {
   opacity: 0;
   transform: translateY(6px);
@@ -706,12 +714,14 @@ body {
     width: 100%;
   }
 
-  .landing-brand strong {
-    font-size: 1.02rem;
+  .logo-kemenag-static {
+    width: 56px;
+    height: 56px;
   }
 
-  .landing-brand small {
-    font-size: 0.8rem;
+  .landing-brand .logo-tracer {
+    width: 64px;
+    height: 64px;
   }
 
   .upload-progress-head {
