@@ -953,7 +953,7 @@ $isLoggedIn = current_user() !== null;
                                         <?php if ($currentUploadToken): ?>
                                             <div class="form-text text-success mt-2"><i class="bi bi-check-circle me-1"></i>Token tersedia: <strong><?= e($currentUploadToken) ?></strong></div>
                                         <?php else: ?>
-                                            <div class="form-text text-danger mt-2"><i class="bi bi-exclamation-triangle me-1"></i><a href="index.php?page=upload_token_management" target="_blank" class="link-danger">Admin: Buat token di sini</a></div>
+                                            <div class="form-text text-danger mt-2"><i class="bi bi-exclamation-triangle me-1"></i><a href="index.php?page=upload-token-management" target="_blank" class="link-danger">Admin: Buat token di sini</a></div>
                                         <?php endif; ?>
                                     </div>
                                 <?php else: ?>

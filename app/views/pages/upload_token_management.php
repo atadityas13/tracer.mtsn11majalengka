@@ -58,7 +58,7 @@ if ($action === 'toggle_require') {
     $stmt->execute([$newState]);
     
     set_flash('success', $newState ? 'Token verifikasi DIAKTIFKAN.' : 'Token verifikasi DINONAKTIFKAN.');
-    redirect('index.php?page=upload_token_management');
+    redirect('index.php?page=upload-token-management');
 }
 
 // Handle change token mode
@@ -69,7 +69,7 @@ if ($action === 'change_mode') {
         $stmt->execute([$newMode]);
         
         set_flash('success', "Mode token diubah ke: $newMode");
-        redirect('index.php?page=upload_token_management');
+        redirect('index.php?page=upload-token-management');
     }
 }
 
@@ -81,7 +81,7 @@ if ($action === 'generate_manual') {
     } else {
         set_flash('error', 'Gagal membuat token manual. Silakan coba lagi.');
     }
-    redirect('index.php?page=upload_token_management');
+    redirect('index.php?page=upload-token-management');
 }
 
 // Handle auto-generate daily token
@@ -109,7 +109,7 @@ if ($action === 'generate_daily') {
     } else {
         set_flash('error', 'Gagal membuat token harian. Silakan coba lagi.');
     }
-    redirect('index.php?page=upload_token_management');
+    redirect('index.php?page=upload-token-management');
 }
 
 // Get token history
@@ -148,7 +148,7 @@ $tokenHistory = $stmt->fetchAll();
                             <?php endif; ?>
                         </div>
                     </div>
-                    <a href="index.php?page=upload_token_management&action=toggle_require" class="btn btn-sm <?= $requireToken ? 'btn-danger' : 'btn-success' ?>" onclick="return confirm('Ubah status verifikasi token?')">
+                    <a href="index.php?page=upload-token-management&action=toggle_require" class="btn btn-sm <?= $requireToken ? 'btn-danger' : 'btn-success' ?>" onclick="return confirm('Ubah status verifikasi token?')">
                         <?= $requireToken ? 'NONAKTIFKAN' : 'AKTIFKAN' ?>
                     </a>
                 </div>
@@ -156,13 +156,13 @@ $tokenHistory = $stmt->fetchAll();
                 <div class="mb-3">
                     <div class="fw-semibold mb-2">Mode Token</div>
                     <div class="btn-group w-100" role="group">
-                        <a href="index.php?page=upload_token_management&action=change_mode&mode=manual" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'manual' ? 'active btn-primary' : '' ?>">
+                        <a href="index.php?page=upload-token-management&action=change_mode&mode=manual" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'manual' ? 'active btn-primary' : '' ?>">
                             🔧 Manual
                         </a>
-                        <a href="index.php?page=upload_token_management&action=change_mode&mode=daily" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'daily' ? 'active btn-primary' : '' ?>">
+                        <a href="index.php?page=upload-token-management&action=change_mode&mode=daily" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'daily' ? 'active btn-primary' : '' ?>">
                             📅 Harian Otomatis
                         </a>
-                        <a href="index.php?page=upload_token_management&action=change_mode&mode=disabled" class="btn btn-outline-danger btn-sm <?= $tokenMode === 'disabled' ? 'active btn-danger' : '' ?>">
+                        <a href="index.php?page=upload-token-management&action=change_mode&mode=disabled" class="btn btn-outline-danger btn-sm <?= $tokenMode === 'disabled' ? 'active btn-danger' : '' ?>">
                             ❌ Disabled
                         </a>
                     </div>
@@ -207,12 +207,12 @@ $tokenHistory = $stmt->fetchAll();
                 <div class="mt-3 pt-3 border-top">
                     <div class="d-grid gap-2">
                         <?php if ($tokenMode !== 'disabled'): ?>
-                            <a href="index.php?page=upload_token_management&action=generate_manual" class="btn btn-primary btn-sm" onclick="return confirm('Buat token manual baru?')">
+                            <a href="index.php?page=upload-token-management&action=generate_manual" class="btn btn-primary btn-sm" onclick="return confirm('Buat token manual baru?')">
                                 + Buat Token Manual
                             </a>
                         <?php endif; ?>
                         <?php if ($tokenMode === 'daily' || $tokenMode === 'manual'): ?>
-                            <a href="index.php?page=upload_token_management&action=generate_daily" class="btn btn-success btn-sm" onclick="return confirm('Generate token harian baru?')">
+                            <a href="index.php?page=upload-token-management&action=generate_daily" class="btn btn-success btn-sm" onclick="return confirm('Generate token harian baru?')">
                                 📅 Generate Token Harian
                             </a>
                         <?php endif; ?>
