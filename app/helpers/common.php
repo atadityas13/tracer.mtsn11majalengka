@@ -364,7 +364,7 @@ if (!function_exists('generate_upload_token')) {
      * @param int $expiry_hours Hours until token expires (0 = no expiry)
      * @return string|false New token string or false on error
      */
-    function generate_upload_token(string $token_type = 'daily', ?string $created_by = null, int $expiry_hours = 24): string|false
+    function generate_upload_token(string $token_type = 'daily', ?string $created_by = null, int $expiry_hours = 24)
     {
         try {
             $setting = setting_akademik();
