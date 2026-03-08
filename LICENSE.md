@@ -146,8 +146,8 @@ Jika Anda diizinkan menggunakan software ini, Anda **WAJIB** mencantumkan atribu
 
 ```
 Powered by TRACER MTsN 11 Majalengka
-Originally developed by MTsN 11 Majalengka
-https://github.com/mtsn11majalengka/tracer
+Originally developed by A.T. Aditya
+https://https://github.com/atadityas13/tracer
 ```
 
 ---

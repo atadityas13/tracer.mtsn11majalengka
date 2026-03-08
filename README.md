@@ -13,6 +13,7 @@
   ![MySQL](https://img.shields.io/badge/MySQL-PDO-4479A1?logo=mysql&logoColor=white)
   ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-7952B3?logo=bootstrap&logoColor=white)
   ![License](https://img.shields.io/badge/License-Proprietary-red)
+  ![Release](https://img.shields.io/badge/First%20Released-March%202026-10b981)
   
 </div>
 
@@ -35,7 +36,7 @@
 - **Master Data Komprehensif**: Kelola user, mata pelajaran, dan data siswa (termasuk tracking siswa yang tidak melanjutkan)
 - **Import Nilai Excel**: Upload massal berbasis NISN menggunakan PhpSpreadsheet
   - Semester **GANJIL** → Proses otomatis untuk siswa di semester 1, 3, 5
-  - Semester **GENAP** → Proses otomatis untuk siswa di semester 2, 4 + import **UAM** semester 5
+  - Semester **GENAP** → Proses otomatis untuk siswa di semester 2, 4 + import **UAM** semester 6
   - Validasi nilai rentang 70-100 dengan feedback error yang jelas
 
 ### ⚙️ **Kontrol Semester Otomatis**
@@ -299,6 +300,15 @@ Email: mtsn11majalengka@gmail.com
 Website: https://mtsn11majalengka.sch.id
 
 Untuk pelaporan bug atau feature request, gunakan [GitHub Issues](../../issues).
+
+---
+
+## 📅 Release Info
+
+- **First Created**: March 6, 2026
+- **Published**: March 2026
+
+Untuk riwayat versi lengkap, lihat **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
