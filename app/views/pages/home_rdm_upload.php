@@ -771,14 +771,23 @@ $isLoggedIn = current_user() !== null;
         <?php endif; ?>
 
         <section class="landing-intro landing-reveal mb-3" style="--reveal-delay: 40ms;">
-            <p class="landing-kicker mb-1">Portal Guru dan Wali Kelas</p>
-            <h1 class="landing-title mb-1">Upload Nilai RDM Terintegrasi</h1>
-            <p class="landing-subtitle mb-0">Unggah file RDM, lakukan preview validasi, lalu konfirmasi simpan sesuai tahun ajaran dan semester aktif.</p>
+            <div class="landing-intro-brand mb-2">
+                <img src="assets/logo-tracer-mtsn11majalengka.png" alt="Logo TRACER">
+                <span>TRACER MTsN 11 MAJALENGKA</span>
+            </div>
+            <p class="landing-kicker mb-1">TRACER | Transkrip &amp; Academic Ledger</p>
+            <h1 class="landing-title mb-1">Portal Upload Nilai RDM</h1>
+            <p class="landing-subtitle mb-2">Tracing Progress, Graduating Success. Unggah nilai rapor berbasis RDM dengan validasi ketat, selaras semester aktif, dan siap finalisasi.</p>
+            <div class="landing-flow" aria-label="Alur proses upload">
+                <span><i class="bi bi-1-circle"></i> Unggah File</span>
+                <span><i class="bi bi-2-circle"></i> Preview Validasi</span>
+                <span><i class="bi bi-3-circle"></i> Konfirmasi Simpan</span>
+            </div>
         </section>
 
         <div class="row g-3 align-items-stretch mb-3 landing-reveal" style="--reveal-delay: 120ms;">
             <div class="col-lg-7">
-                <section class="landing-upload card border-0 shadow-lg h-100">
+                <section class="landing-upload card border-0 shadow-sm h-100">
                     <div class="card-body p-4">
                         <div class="landing-quick-meta mb-3">
                             <span><i class="bi bi-calendar2-check"></i> TA Aktif: <?= e((string) $setting['tahun_ajaran']) ?></span>
@@ -821,9 +830,11 @@ $isLoggedIn = current_user() !== null;
             </div>
 
             <div class="col-lg-5">
-                <section class="landing-rules-slider card border-0 h-100">
-                    <div class="card-body p-3">
-                        <h2 class="h6 mb-3 text-success-emphasis">Ketentuan Upload</h2>
+                <section class="landing-rules-slider card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pt-3 pb-0">
+                        <h2 class="h6 mb-2 text-success-emphasis">Ketentuan Upload</h2>
+                    </div>
+                    <div class="card-body p-3 pt-2">
                         <div id="rulesCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="6500">
                             <div class="carousel-indicators position-static mb-2">
                                 <button type="button" data-bs-target="#rulesCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
@@ -867,7 +878,7 @@ $isLoggedIn = current_user() !== null;
             </div>
         </div>
 
-        <section id="uploadProgressArea" class="upload-progress-area landing-reveal mb-3 <?= (($flash['type'] ?? '') === 'success') ? 'is-complete' : '' ?>" style="--reveal-delay: 180ms;" aria-live="polite">
+        <section id="uploadProgressArea" class="upload-progress-area mb-3 <?= (($flash['type'] ?? '') === 'success') ? 'is-complete' : '' ?>" aria-live="polite">
             <div class="upload-progress-head">
                 <div>
                     <p id="uploadProgressTitle" class="upload-progress-title mb-1">Menyiapkan unggah file...</p>
@@ -889,7 +900,7 @@ $isLoggedIn = current_user() !== null;
         <?php if ($homePreview): ?>
             <div class="row justify-content-center mb-3 landing-reveal" style="--reveal-delay: 220ms;">
                 <div class="col-xl-9 col-lg-10">
-                    <section class="card border-2 border-info bg-info-light">
+                    <section class="card border-0 shadow-sm bg-info-light">
                         <div class="card-body p-4">
                             <div class="d-flex align-items-center mb-4">
                                 <div class="alert alert-info border-0 flex-grow-1 mb-0">
@@ -961,8 +972,8 @@ $isLoggedIn = current_user() !== null;
     <footer class="landing-footer landing-reveal" style="--reveal-delay: 260ms;">
         <div class="container py-3">
             <div class="landing-footer-title">TRACER MTsN 11 Majalengka</div>
-            <div class="landing-footer-desc">Sistem manajemen unggah dan validasi nilai rapor berbasis RDM untuk layanan data akademik yang akurat, aman, dan terstandar.</div>
-            <div class="landing-footer-tagline">Tagline: Tertib Data, Tepat Nilai, Terjaga Mutu.</div>
+            <div class="landing-footer-desc">Sistem manajemen transkrip nilai akademik berbasis web untuk MTsN 11 Majalengka, terintegrasi dari input nilai sampai proses kelulusan.</div>
+            <div class="landing-footer-tagline">Tracing Progress, Graduating Success.</div>
         </div>
     </footer>
 </div>
