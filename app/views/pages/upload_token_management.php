@@ -40,7 +40,7 @@ if (!in_array(current_user()['role'] ?? '', ['admin', 'kurikulum'])) {
 enforce_csrf('upload_token_management');
 
 $setting = setting_akademik();
-$action = strtolower(trim((string) ($_GET['action'] ?? '')));
+$action = strtolower(trim((string) ($_POST['action'] ?? '')));
 
 // Get current settings
 $stmt = db()->query("SELECT require_upload_token, token_mode FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1");
@@ -63,7 +63,7 @@ if ($action === 'toggle_require') {
 
 // Handle change token mode
 if ($action === 'change_mode') {
-    $newMode = strtolower(trim((string) ($_GET['mode'] ?? '')));
+    $newMode = strtolower(trim((string) ($_POST['mode'] ?? '')));
     if (in_array($newMode, ['manual', 'daily', 'disabled'])) {
         $stmt = db()->prepare("UPDATE pengaturan_akademik SET token_mode = ? WHERE is_aktif=1");
         $stmt->execute([$newMode]);
@@ -148,23 +148,42 @@ $tokenHistory = $stmt->fetchAll();
                             <?php endif; ?>
                         </div>
                     </div>
-                    <a href="index.php?page=upload-token-management&action=toggle_require" class="btn btn-sm <?= $requireToken ? 'btn-danger' : 'btn-success' ?>" onclick="return confirm('Ubah status verifikasi token?')">
-                        <?= $requireToken ? 'NONAKTIFKAN' : 'AKTIFKAN' ?>
-                    </a>
+                    <form method="post" style="display: inline;">
+                        <?= csrf_input() ?>
+                        <input type="hidden" name="action" value="toggle_require">
+                        <button type="submit" class="btn btn-sm <?= $requireToken ? 'btn-danger' : 'btn-success' ?>" onclick="return confirm('Ubah status verifikasi token?')">
+                            <?= $requireToken ? 'NONAKTIFKAN' : 'AKTIFKAN' ?>
+                        </button>
+                    </form>
                 </div>
 
                 <div class="mb-3">
                     <div class="fw-semibold mb-2">Mode Token</div>
-                    <div class="btn-group w-100" role="group">
-                        <a href="index.php?page=upload-token-management&action=change_mode&mode=manual" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'manual' ? 'active btn-primary' : '' ?>">
-                            🔧 Manual
-                        </a>
-                        <a href="index.php?page=upload-token-management&action=change_mode&mode=daily" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'daily' ? 'active btn-primary' : '' ?>">
-                            📅 Harian Otomatis
-                        </a>
-                        <a href="index.php?page=upload-token-management&action=change_mode&mode=disabled" class="btn btn-outline-danger btn-sm <?= $tokenMode === 'disabled' ? 'active btn-danger' : '' ?>">
-                            ❌ Disabled
-                        </a>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <form method="post" style="display: inline;">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="change_mode">
+                            <input type="hidden" name="mode" value="manual">
+                            <button type="submit" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'manual' ? 'active btn-primary' : '' ?>">
+                                🔧 Manual
+                            </button>
+                        </form>
+                        <form method="post" style="display: inline;">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="change_mode">
+                            <input type="hidden" name="mode" value="daily">
+                            <button type="submit" class="btn btn-outline-primary btn-sm <?= $tokenMode === 'daily' ? 'active btn-primary' : '' ?>">
+                                📅 Harian Otomatis
+                            </button>
+                        </form>
+                        <form method="post" style="display: inline;">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="change_mode">
+                            <input type="hidden" name="mode" value="disabled">
+                            <button type="submit" class="btn btn-outline-danger btn-sm <?= $tokenMode === 'disabled' ? 'active btn-danger' : '' ?>">
+                                ❌ Disabled
+                            </button>
+                        </form>
                     </div>
                     <div class="small text-secondary mt-2">
                         <?php if ($tokenMode === 'manual'): ?>
@@ -207,14 +226,22 @@ $tokenHistory = $stmt->fetchAll();
                 <div class="mt-3 pt-3 border-top">
                     <div class="d-grid gap-2">
                         <?php if ($tokenMode !== 'disabled'): ?>
-                            <a href="index.php?page=upload-token-management&action=generate_manual" class="btn btn-primary btn-sm" onclick="return confirm('Buat token manual baru?')">
-                                + Buat Token Manual
-                            </a>
+                            <form method="post">
+                                <?= csrf_input() ?>
+                                <input type="hidden" name="action" value="generate_manual">
+                                <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Buat token manual baru?')">
+                                    + Buat Token Manual
+                                </button>
+                            </form>
                         <?php endif; ?>
                         <?php if ($tokenMode === 'daily' || $tokenMode === 'manual'): ?>
-                            <a href="index.php?page=upload-token-management&action=generate_daily" class="btn btn-success btn-sm" onclick="return confirm('Generate token harian baru?')">
-                                📅 Generate Token Harian
-                            </a>
+                            <form method="post">
+                                <?= csrf_input() ?>
+                                <input type="hidden" name="action" value="generate_daily">
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Generate token harian baru?')">
+                                    📅 Generate Token Harian
+                                </button>
+                            </form>
                         <?php endif; ?>
                     </div>
                 </div>

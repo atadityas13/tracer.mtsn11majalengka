@@ -365,15 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=home');
         }
 
-        // Validate internal verification token (double-submit protection)
-        $tokenInput = strtoupper(trim((string) ($_POST['verification_token'] ?? '')));
-        $tokenExpected = strtoupper(trim((string) ($preview['verification_token'] ?? '')));
-        if ($tokenExpected === '' || $tokenInput === '' || !hash_equals($tokenExpected, $tokenInput)) {
-            set_flash('error', 'Token verifikasi tidak valid. Proses simpan dibatalkan.');
-            redirect('index.php?page=home');
-        }
-
-        // Validate admin upload token if required
+        // Validate admin upload token only
         if ($requireUploadToken && $tokenMode !== 'disabled') {
             $adminTokenInput = strtoupper(trim((string) ($_POST['admin_upload_token'] ?? '')));
             if ($adminTokenInput === '') {
@@ -407,10 +399,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nisnSudahAda = array_map(static function ($row) {
                 return (string) ($row['nisn'] ?? '');
             }, $sudahAdaRows);
-            $previewNisn = implode(', ', array_slice($nisnSudahAda, 0, 10));
-            $suffix = count($nisnSudahAda) > 10 ? ' dan lainnya' : '';
+            
+            // Fetch student names for display
+            $placeholdersSiswaNames = implode(',', array_fill(0, count($nisnSudahAda), '?'));
+            $sqlSiswaNames = "SELECT nisn, nama FROM siswa WHERE nisn IN ({$placeholdersSiswaNames})";
+            $stSiswaNames = db()->prepare($sqlSiswaNames);
+            $stSiswaNames->execute($nisnSudahAda);
+            $siswaNameRows = $stSiswaNames->fetchAll();
+            
+            $displayList = [];
+            foreach ($nisnSudahAda as $nisn) {
+                $namaFound = '';
+                foreach ($siswaNameRows as $sn) {
+                    if ((string) $sn['nisn'] === $nisn) {
+                        $namaFound = (string) ($sn['nama'] ?? '');
+                        break;
+                    }
+                }
+                $displayList[] = $namaFound !== '' ? $namaFound . ' (' . $nisn . ')' : $nisn;
+            }
+            
+            $previewNisn = implode(', ', array_slice($displayList, 0, 10));
+            $suffix = count($displayList) > 10 ? ' dan lainnya' : '';
             unset($_SESSION[$homePreviewSessionKey]);
-            set_flash('error', 'Simpan dibatalkan. Ditemukan data nilai tahun ajaran aktif untuk NISN: ' . $previewNisn . $suffix . '. Silakan hubungi admin.');
+            set_flash('error', 'Simpan dibatalkan. Ditemukan siswa yang sudah memiliki nilai pada tahun ajaran aktif: ' . $previewNisn . $suffix . '.');
             redirect('index.php?page=home');
         }
 
@@ -668,8 +680,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nisnSudahAda = array_map(static function ($row) {
             return (string) ($row['nisn'] ?? '');
         }, $nisnSudahAdaRows);
-        $previewSudahAda = implode(', ', array_slice($nisnSudahAda, 0, 10));
-        $suffixSudahAda = count($nisnSudahAda) > 10 ? ' dan lainnya' : '';
+        
+        // Fetch student names for display
+        $placeholdersSiswa = implode(',', array_fill(0, count($nisnSudahAda), '?'));
+        $sqlSiswaNames = "SELECT nisn, nama FROM siswa WHERE nisn IN ({$placeholdersSiswa})";
+        $stSiswaNames = db()->prepare($sqlSiswaNames);
+        $stSiswaNames->execute($nisnSudahAda);
+        $siswaNameRows = $stSiswaNames->fetchAll();
+        
+        $displayList = [];
+        foreach ($nisnSudahAda as $nisn) {
+            $namaFound = '';
+            foreach ($siswaNameRows as $sn) {
+                if ((string) $sn['nisn'] === $nisn) {
+                    $namaFound = (string) ($sn['nama'] ?? '');
+                    break;
+                }
+            }
+            $displayList[] = $namaFound !== '' ? $namaFound . ' (' . $nisn . ')' : $nisn;
+        }
+        
+        $previewSudahAda = implode(', ', array_slice($displayList, 0, 10));
+        $suffixSudahAda = count($displayList) > 10 ? ' dan lainnya' : '';
         set_flash('error', 'Upload dibatalkan. Ditemukan siswa yang sudah memiliki nilai pada tahun ajaran aktif: ' . $previewSudahAda . $suffixSudahAda . '.');
         redirect('index.php?page=home');
     }
@@ -720,11 +752,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('index.php?page=home');
     }
 
-    $verificationToken = strtoupper(bin2hex(random_bytes(3)));
     $_SESSION[$homePreviewSessionKey] = [
         'tahun_ajaran' => (string) $setting['tahun_ajaran'],
         'generated_at' => date('Y-m-d H:i:s'),
-        'verification_token' => $verificationToken,
         'meta' => [
             'entry_count' => count($entries),
             'siswa_update_count' => count($studentUpdates),
@@ -734,7 +764,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'student_updates' => $studentUpdates,
     ];
 
-    set_flash('success', 'Preview upload berhasil dibuat. Verifikasi token sebelum konfirmasi simpan. Token: ' . $verificationToken);
+    set_flash('success', 'Preview upload berhasil dibuat. Silakan verifikasi dan konfirmasi simpan.');
 
     redirect('index.php?page=home');
 }
@@ -923,18 +953,12 @@ $isLoggedIn = current_user() !== null;
                                         <span class="badge bg-info me-2">Update Siswa: <?= e((string) ((int) ($homePreview['meta']['siswa_update_count'] ?? 0))) ?></span>
                                         <span class="badge bg-warning">Skip Semester: <?= e((string) ((int) ($homePreview['meta']['skip_semester'] ?? 0))) ?></span>
                                     </div>
-                                    <div class="small mt-2 text-secondary">
-                                        Token Verifikasi: <code class="text-dark"><?= e((string) ($homePreview['verification_token'] ?? '-')) ?></code>
-                                    </div>
                                 </div>
                             </div>
 
                             <form method="post" class="row g-2">
                                 <?= csrf_input() ?>
-                                <input type="hidden" name="action" value="confirm_upload">
-                                
-                                <!-- Internal Verification Token (auto-filled) -->
-                                <input type="hidden" name="verification_token" value="<?= e((string) ($homePreview['verification_token'] ?? '')) ?>">
+                                <input type="hidden" name="action" value="confirm_upload">>
 
                                 <!-- Admin Upload Token (if required) -->
                                 <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
