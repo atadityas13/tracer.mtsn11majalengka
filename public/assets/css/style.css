@@ -575,3 +575,13 @@ body {
     flex-direction: column;
   }
 }
+
+/* Center form styling */
+.bg-info-light {
+  background: linear-gradient(135deg, rgba(13, 110, 253, 0.08) 0%, rgba(13, 110, 253, 0.04) 100%) !important;
+  border-color: rgba(13, 110, 253, 0.2) !important;
+}
+
+.landing-upload .card-body {
+  background: rgba(255, 255, 255, 0.95);
+}

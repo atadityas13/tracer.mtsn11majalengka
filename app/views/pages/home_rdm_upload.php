@@ -816,99 +816,147 @@ $isLoggedIn = current_user() !== null;
             </div>
         </section>
 
-        <section class="landing-upload card border-0 shadow-lg">
-            <div class="card-body p-4 p-lg-5">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                    <h3 class="h4 mb-0">Unggah File Nilai RDM</h3>
-                    <span class="badge text-bg-success-subtle text-success-emphasis px-3 py-2">Tahun Ajaran <?= e((string) $setting['tahun_ajaran']) ?></span>
-                </div>
+        <!-- FORM UPLOAD UTAMA (Centered) -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-8">
+                <section class="landing-upload card border-0 shadow-lg">
+                    <div class="card-body p-4 p-lg-5">
+                        <div class="mb-4 text-center">
+                            <h2 class="h4 fw-bold mb-2">📤 Upload File Nilai RDM</h2>
+                            <p class="text-secondary small mb-0">Pilih file template RDM dan sistem akan memvalidasi serta menyimpan secara otomatis</p>
+                        </div>
 
-                <!-- Token Requirement Status -->
-                <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
-                    <div class="alert alert-warning border-0 shadow-sm mb-3" role="alert">
-                        <div class="fw-semibold mb-1">🔐 Verifikasi Token Diperlukan</div>
-                        <div class="small">
-                            Untuk upload file nilai, Anda harus menggunakan token dari admin/kurikulum. 
-                            <?php if ($currentUploadToken): ?>
-                                <strong>Token saat ini siap digunakan.</strong>
-                            <?php else: ?>
-                                <strong>Hubungi admin/kurikulum untuk mendapatkan token.</strong>
-                            <?php endif; ?>
+                        <!-- Token Status Alert -->
+                        <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
+                            <div class="alert alert-warning border-0 mb-4" role="alert">
+                                <div class="fw-semibold mb-1"><i class="bi bi-key-fill"></i> Verifikasi Token Diperlukan</div>
+                                <div class="small text-secondary">
+                                    Anda harus memasukkan token dari admin/kurikulum untuk verifikasi upload.
+                                    <?php if ($currentUploadToken): ?>
+                                        <span class="d-block mt-1"><strong class="text-success">✓ Token tersedia</strong></span>
+                                    <?php else: ?>
+                                        <span class="d-block mt-1"><strong class="text-warning">⚠️ Hubungi admin untuk mendapatkan token</strong></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Upload Form -->
+                        <form id="rdmUploadForm" method="post" enctype="multipart/form-data">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="preview_upload">
+                            
+                            <div class="mb-4">
+                                <label for="file" class="form-label fw-semibold">Pilih File Template RDM (.xlsx / .xls)</label>
+                                <div class="mb-2">
+                                    <input type="file" class="form-control form-control-lg" id="file" name="file" accept=".xlsx,.xls" required>
+                                </div>
+                                <div class="form-text">Struktur header harus sesuai template asli agar mapel terdeteksi otomatis</div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button id="uploadSubmitBtn" type="submit" class="btn btn-lg landing-upload-btn">
+                                    <i class="bi bi-cloud-arrow-up me-2"></i> Preview Upload
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Info Box -->
+                <div class="mt-4 p-3 bg-light rounded border">
+                    <div class="row g-3 small">
+                        <div class="col-6 col-md-3 text-center">
+                            <div class="fw-bold text-success">Tahun Ajaran</div>
+                            <div class="text-secondary"><?= e((string) $setting['tahun_ajaran']) ?></div>
+                        </div>
+                        <div class="col-6 col-md-3 text-center">
+                            <div class="fw-bold text-primary">Semester Target</div>
+                            <div class="text-secondary"><?= e($targetSemesterLabel) ?></div>
+                        </div>
+                        <div class="col-6 col-md-3 text-center">
+                            <div class="fw-bold text-info">Range Nilai</div>
+                            <div class="text-secondary">7 - 100</div>
+                        </div>
+                        <div class="col-6 col-md-3 text-center">
+                            <div class="fw-bold text-warning">Status</div>
+                            <div class="text-secondary"><?= $requireUploadToken && $tokenMode !== 'disabled' ? 'Token ON' : 'Token OFF' ?></div>
                         </div>
                     </div>
-                <?php endif; ?>
+                </div>
+            </div>
+        </div>
 
-                <?php if ($homePreview): ?>
-                    <div class="alert alert-info border-0 shadow-sm mb-3" role="alert">
-                        <div class="fw-semibold mb-1">Preview Siap Dikonfirmasi</div>
-                        <div class="small mb-1">Token verifikasi: <code><?= e((string) ($homePreview['verification_token'] ?? '-')) ?></code></div>
-                        <div class="small">Baris nilai: <?= e((string) ((int) ($homePreview['meta']['entry_count'] ?? 0))) ?>, update data siswa: <?= e((string) ((int) ($homePreview['meta']['siswa_update_count'] ?? 0))) ?>, dilewati semester tidak sesuai: <?= e((string) ((int) ($homePreview['meta']['skip_semester'] ?? 0))) ?>.</div>
-                    </div>
+        <!-- PREVIEW & CONFIRMATION SECTION (Only show if preview exists) -->
+        <?php if ($homePreview): ?>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <section class="card border-2 border-info bg-info-light">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-4">
+                                <div class="alert alert-info border-0 flex-grow-1 mb-0">
+                                    <div class="fw-semibold mb-1"><i class="bi bi-info-circle-fill me-2"></i>Preview Siap Dikonfirmasi</div>
+                                    <div class="small">
+                                        <span class="badge bg-info me-2">Baris: <?= e((string) ((int) ($homePreview['meta']['entry_count'] ?? 0))) ?></span>
+                                        <span class="badge bg-info me-2">Update Siswa: <?= e((string) ((int) ($homePreview['meta']['siswa_update_count'] ?? 0))) ?></span>
+                                        <span class="badge bg-warning">Skip Semester: <?= e((string) ((int) ($homePreview['meta']['skip_semester'] ?? 0))) ?></span>
+                                    </div>
+                                    <div class="small mt-2 text-secondary">
+                                        Token Verifikasi: <code class="text-dark"><?= e((string) ($homePreview['verification_token'] ?? '-')) ?></code>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div class="row g-3 mb-3">
-                        <div class="col-lg-8">
-                            <form method="post" class="row g-2 align-items-end">
+                            <form method="post" class="row g-2">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="confirm_upload">
-                                <div class="col-md-8">
-                                    <label for="verification_token" class="form-label">Masukkan token verifikasi</label>
-                                    <input type="text" class="form-control" id="verification_token" name="verification_token" placeholder="Contoh: A1B2C3" maxlength="12" required>
-                                </div>
                                 
+                                <!-- Internal Verification Token -->
+                                <div class="col-12">
+                                    <label for="verification_token" class="form-label small fw-semibold">Token Verifikasi Konfirmasi</label>
+                                    <input type="text" class="form-control" id="verification_token" name="verification_token" placeholder="Masukkan token dari atas" maxlength="12" required>
+                                </div>
+
+                                <!-- Admin Upload Token (if required) -->
                                 <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
-                                    <div class="col-md-8">
-                                        <label for="admin_upload_token" class="form-label">Token dari Admin/Kurikulum</label>
+                                    <div class="col-12">
+                                        <label for="admin_upload_token" class="form-label small fw-semibold">Token dari Admin/Kurikulum</label>
                                         <div class="input-group">
-                                            <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" placeholder="<?= $currentUploadToken ? e($currentUploadToken) : 'Minta token ke admin' ?>" maxlength="12" required>
+                                            <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" 
+                                                   placeholder="<?= $currentUploadToken ? e($currentUploadToken) : 'Minta token ke admin' ?>" 
+                                                   maxlength="12" required>
                                             <?php if ($currentUploadToken): ?>
-                                                <button class="btn btn-outline-secondary" type="button" onclick="copyAdminToken()">
+                                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyAdminToken()">
                                                     <i class="bi bi-clipboard me-1"></i> Copy
                                                 </button>
                                             <?php endif; ?>
                                         </div>
-                                        <div class="form-text">
-                                            <?php if ($currentUploadToken): ?>
-                                                ✓ Token tersedia: <code><?= e($currentUploadToken) ?></code>
-                                            <?php else: ?>
-                                                ⚠️ Hubungi admin untuk mendapatkan token upload harian
-                                            <?php endif; ?>
-                                        </div>
+                                        <?php if ($currentUploadToken): ?>
+                                            <div class="form-text">✓ <strong><?= e($currentUploadToken) ?></strong> tersedia</div>
+                                        <?php else: ?>
+                                            <div class="form-text text-warning">⚠️ Hubungi admin untuk token</div>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
-                                
-                                <div class="col-md-4 d-grid">
-                                    <button type="submit" class="btn btn-success">
-                                        <i class="bi bi-check2-circle me-1"></i> Konfirmasi Simpan
+
+                                <div class="col-12 d-grid gap-2 pt-2">
+                                    <button type="submit" class="btn btn-success btn-lg fw-semibold">
+                                        <i class="bi bi-check2-circle me-2"></i> Konfirmasi Simpan
                                     </button>
                                 </div>
                             </form>
-                        </div>
-                        <div class="col-lg-4 d-grid">
-                            <form method="post" class="d-grid">
+
+                            <!-- Batalkan Preview Button -->
+                            <form method="post" class="d-grid mt-2">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="cancel_preview_upload">
                                 <button type="submit" class="btn btn-outline-secondary">Batalkan Preview</button>
                             </form>
                         </div>
-                    </div>
-                <?php endif; ?>
-
-                <form id="rdmUploadForm" method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
-                    <?= csrf_input() ?>
-                    <input type="hidden" name="action" value="preview_upload">
-                    <div class="col-lg-9">
-                        <label for="file" class="form-label">Pilih file template RDM</label>
-                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
-                        <div class="form-text">Pastikan struktur header tidak diubah agar mapel terdeteksi otomatis.</div>
-                    </div>
-                    <div class="col-lg-3 d-grid">
-                        <button id="uploadSubmitBtn" type="submit" class="btn landing-upload-btn">
-                            <i class="bi bi-search me-1"></i> Preview Upload
-                        </button>
-                    </div>
-                </form>
+                    </section>
+                </div>
             </div>
-        </section>
+        <?php endif; ?>
     </main>
 </div>
 
