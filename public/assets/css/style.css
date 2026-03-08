@@ -7,6 +7,15 @@ body {
   font-family: "Inter", "Segoe UI", Arial, sans-serif;
 }
 
+.link-clean,
+.link-clean:hover,
+.link-clean:focus,
+.link-clean:active,
+.link-clean:visited {
+  color: inherit;
+  text-decoration: none;
+}
+
 .app-shell {
   min-height: 100vh;
   display: flex;
@@ -103,16 +112,27 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1rem;
   padding: 0.55rem 0.55rem;
+  width: 100%;
   text-align: center;
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
   margin-bottom: 0.8rem;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
 }
 
 .brand-wrap:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
+}
+
+.brand-wrap:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
 }
 
 .brand-wrap img {

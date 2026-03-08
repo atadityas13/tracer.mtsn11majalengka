@@ -144,10 +144,12 @@ MTsN 11 Majalengka berhak menuntut ganti rugi dan/atau pidana kepada pihak yang 
 
 Jika Anda diizinkan menggunakan software ini, Anda **WAJIB** mencantumkan atribusi:
 
+Developer profile: [A.T. Aditya](https://www.instagram.com/atadityas_13/)
+
 ```
 Powered by TRACER MTsN 11 Majalengka
 Originally developed by A.T. Aditya
-https://https://github.com/atadityas13/tracer
+https://github.com/atadityas13/tracer
 ```
 
 ---

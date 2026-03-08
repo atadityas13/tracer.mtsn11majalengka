@@ -204,7 +204,7 @@ $flash = get_flash();
 
         <div class="text-center mt-3 text-secondary small">
             <div>© <?= e((string) date('Y')) ?> MTsN 11 Majalengka</div>
-            <div>Developed by A.T. Aditya</div>
+            <div>Developed by <a href="https://www.instagram.com/atadityas_13/" class="link-clean" target="_blank" rel="noopener noreferrer">A.T. Aditya</a></div>
         </div>
     </div>
 </div>

@@ -51,9 +51,9 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
 <div class="app-shell">
     <?php if ($user): ?>
         <aside class="sidebar">
-            <div class="brand-wrap">
+            <button type="button" class="brand-wrap border-0" data-bs-toggle="modal" data-bs-target="#aboutTracerModal" aria-label="Tentang Aplikasi TRACER">
                 <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo">
-            </div>
+            </button>
 
             <div class="menu-label">Menu Utama</div>
             <nav class="nav flex-column gap-1 mb-3">
@@ -113,9 +113,43 @@ $isSettingPage = in_array($page, ['mapel', 'semester-control', 'users', 'db-tool
 
             <div class="sidebar-footer small">
                 <div>© <?= date('Y') ?> MTsN 11 Majalengka</div>
-                <div>• TRACER v1.0.0 •<br>Developed by A.T. Aditya</div>
+                <div>• TRACER v1.0.0 •<br>Developed by <a href="https://www.instagram.com/atadityas_13/" class="link-clean" target="_blank" rel="noopener noreferrer">A.T. Aditya</a></div>
             </div>
         </aside>
+
+        <div class="modal fade" id="aboutTracerModal" tabindex="-1" aria-labelledby="aboutTracerModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #064e3b 0%, #10b981 100%); color: #fff;">
+                        <h5 class="modal-title" id="aboutTracerModalLabel">Tentang Aplikasi TRACER</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-3">
+                            <img src="assets/logo-tracer-mtsn11majalengka.png" alt="TRACER Logo" style="height: 86px; width: auto; object-fit: contain;">
+                        </div>
+                        <p class="mb-2 fw-semibold">TRACER MTsN 11 Majalengka</p>
+                        <p class="mb-2 small text-secondary">Transkrip &amp; Academic Ledger</p>
+                        <p class="mb-2 text-secondary"><em>Tracing Progress, Graduating Success.</em></p>
+                        <p class="small text-secondary mb-3">
+                            Sistem manajemen transkrip nilai akademik berbasis web untuk MTsN 11 Majalengka,
+                            dengan verifikasi QR code, kontrol semester, dan pelacakan progres siswa dari Semester 1 hingga UAM.
+                        </p>
+                        <hr>
+                        <div class="small">
+                            <div><strong>First Created:</strong> March 6, 2026</div>
+                            <div><strong>Published:</strong> March 2026</div>
+                            <div><strong>Version:</strong> TRACER v1.0.0</div>
+                            <div><strong>Developer:</strong> <a href="https://www.instagram.com/atadityas_13/" class="link-clean" target="_blank" rel="noopener noreferrer">A.T. Aditya</a></div>
+                            <div class="mt-2"><strong>Special Honor:</strong> Ibu Nia Haryati, S.Pd., Admin Kurikulum yang menginspirasi dan menginisiasi pengembangan aplikasi ini.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     <?php endif; ?>
 
     <main class="main-content">
