@@ -922,7 +922,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         <i class="bi bi-info-circle"></i> Belum ada data alumni. Lakukan proses migrasi siswa ke alumni terlebih dahulu di menu <strong>Kelulusan</strong>.
                     </div>
                 <?php else: ?>
-                <form method="post" id="formTranskrip" target="_blank" class="row g-3 align-items-end">
+                <form method="post" action="cetak_transkrip_loader.php" id="formTranskrip" target="_blank" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="transkrip">
                     <input type="hidden" name="titimangsa" id="titimangsa_value">
@@ -960,7 +960,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         <i class="bi bi-exclamation-triangle"></i> Data alumni sudah ada, tetapi belum ada <strong>angkatan lulus</strong> yang terisi. Lengkapi angkatan di menu <strong>Kelulusan</strong> agar fitur cetak per angkatan bisa digunakan.
                     </div>
                 <?php else: ?>
-                <form method="post" id="formBulkTranskrip" target="_blank" class="row g-3 align-items-end">
+                <form method="post" action="cetak_transkrip_loader.php" id="formBulkTranskrip" target="_blank" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="bulk_transkrip">
                     <input type="hidden" name="titimangsa" id="titimangsa_bulk">
@@ -1035,6 +1035,17 @@ require dirname(__DIR__) . '/partials/header.php';
 <script>
 let targetFormId = '';
 let isGeneratingTranscript = false;
+
+function resetGenerateState() {
+    isGeneratingTranscript = false;
+    const submitBtn = document.getElementById('btnSubmitTTD');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+    }
+    if (typeof Swal !== 'undefined' && Swal.isVisible()) {
+        Swal.close();
+    }
+}
 
 function showGenerateLoading(message) {
     if (typeof Swal === 'undefined') {
@@ -1172,11 +1183,21 @@ function submitWithTTD() {
 
     setTimeout(function() {
         form.submit();
+        // PDF opens in a new tab, so stop spinner on current page automatically.
+        setTimeout(function() {
+            resetGenerateState();
+        }, 1200);
     }, 80);
 }
 
 // Initialize search on alumni select
 document.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('focus', function() {
+        if (isGeneratingTranscript) {
+            resetGenerateState();
+        }
+    });
+
     // Load prefilled dari localStorage jika ada
     const savedNama = localStorage.getItem('kepsek_nama');
     const savedNip = localStorage.getItem('kepsek_nip');
