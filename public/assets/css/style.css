@@ -15,7 +15,7 @@ body {
 
 .sidebar {
   width: 280px;
-  padding: 1rem;
+  padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
   background: linear-gradient(165deg, var(--green-dark) 0%, #0b6b52 100%);
@@ -28,7 +28,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.72);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
 .sidebar-link {
@@ -102,11 +102,11 @@ body {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1rem;
-  padding: 1rem 0.7rem;
+  padding: 0.55rem 0.55rem;
   text-align: center;
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
-  margin-bottom: 1.8rem;
+  margin-bottom: 0.8rem;
 }
 
 .brand-wrap:hover {
