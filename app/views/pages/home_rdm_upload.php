@@ -525,12 +525,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('index.php?page=home');
     }
 
-    $signatureValidation = rdm_validate_export_signature($rows);
-    if (!$signatureValidation['valid']) {
-        set_flash('error', 'Upload ditolak. File tidak terverifikasi sebagai ekspor RDM. ' . $signatureValidation['reason']);
-        redirect('index.php?page=home');
-    }
-
     $kelasRdm = rdm_detect_kelas($rows);
     if ($kelasRdm === '') {
         set_flash('error', 'Upload ditolak. Kelas pada header file RDM tidak ditemukan. Gunakan file hasil ekspor RDM asli.');
