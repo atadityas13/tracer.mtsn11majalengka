@@ -63,6 +63,7 @@ if (!function_exists('parse_import_header')) {
         $nisnIndex = null;
         $kelasIndex = null;
         $nomorAbsenIndex = null;
+        $namaIndex = null;
         $mapelColumns = [];
 
         foreach ($headerRow as $index => $header) {
@@ -86,6 +87,11 @@ if (!function_exists('parse_import_header')) {
                 continue;
             }
 
+            if ($namaIndex === null && in_array($headerKey, ['NAMA', 'NAMA LENGKAP', 'NAMA SISWA'], true)) {
+                $namaIndex = (int) $index;
+                continue;
+            }
+
             if (isset($aliasToMapelId[$headerKey])) {
                 $mapelColumns[(int) $index] = (int) $aliasToMapelId[$headerKey];
                 continue;
@@ -100,6 +106,7 @@ if (!function_exists('parse_import_header')) {
             'nisn_index' => $nisnIndex,
             'kelas_index' => $kelasIndex,
             'nomor_absen_index' => $nomorAbsenIndex,
+            'nama_index' => $namaIndex,
             'mapel_columns' => $mapelColumns,
         ];
     }
@@ -238,6 +245,7 @@ if (!function_exists('detect_import_layout')) {
             'nisn_index' => null,
             'kelas_index' => null,
             'nomor_absen_index' => null,
+            'nama_index' => null,
             'mapel_columns' => [],
         ];
 
@@ -254,6 +262,7 @@ if (!function_exists('detect_import_layout')) {
                         'nisn_index' => $single['nisn_index'],
                         'kelas_index' => $single['kelas_index'],
                         'nomor_absen_index' => $single['nomor_absen_index'],
+                        'nama_index' => $single['nama_index'],
                         'mapel_columns' => $single['mapel_columns'],
                     ];
                 }
@@ -275,6 +284,7 @@ if (!function_exists('detect_import_layout')) {
                         'nisn_index' => $combined['nisn_index'],
                         'kelas_index' => $combined['kelas_index'],
                         'nomor_absen_index' => $combined['nomor_absen_index'],
+                        'nama_index' => $combined['nama_index'],
                         'mapel_columns' => $combined['mapel_columns'],
                     ];
                 }
@@ -553,6 +563,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nisnIndex = $layout['nisn_index'];
     $kelasIndex = $layout['kelas_index'];
     $nomorAbsenIndex = $layout['nomor_absen_index'];
+    $namaIndex = $layout['nama_index'];
     $mapelColumns = $layout['mapel_columns'];
     $dataStartRow = (int) $layout['data_start_row'];
     $kelasRdmDetected = detect_rdm_kelas($rows);
@@ -580,6 +591,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'preview_rapor_rdm') {
         $nisnFromFile = [];
+        $namaByNisn = [];
         foreach ($rows as $i => $row) {
             if ($i < $dataStartRow) {
                 continue;
@@ -587,6 +599,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nisnCandidate = trim((string) ($row[$nisnIndex] ?? ''));
             if ($nisnCandidate !== '') {
                 $nisnFromFile[$nisnCandidate] = true;
+                if ($namaIndex !== null) {
+                    $namaCandidate = trim((string) ($row[$namaIndex] ?? ''));
+                    if ($namaCandidate !== '') {
+                        $namaByNisn[$nisnCandidate] = $namaCandidate;
+                    }
+                }
             }
         }
 
@@ -610,17 +628,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $nisnTidakCocok = [];
+        $missingStudents = [];
         foreach ($nisnList as $nisnFile) {
             if (!isset($siswaByNisn[$nisnFile])) {
-                $nisnTidakCocok[] = $nisnFile;
+                $displayName = isset($namaByNisn[$nisnFile]) ? $namaByNisn[$nisnFile] . ' (' . $nisnFile . ')' : $nisnFile;
+                $missingStudents[] = $displayName;
             }
         }
 
-        if (count($nisnTidakCocok) > 0) {
-            $previewMissing = implode(', ', array_slice($nisnTidakCocok, 0, 10));
-            $suffix = count($nisnTidakCocok) > 10 ? ' dan lainnya' : '';
-            set_flash('error', 'Preview dibatalkan. Ditemukan ' . count($nisnTidakCocok) . ' NISN pada file yang tidak cocok dengan data siswa aktif aplikasi: ' . $previewMissing . $suffix . '.');
+        if (count($missingStudents) > 0) {
+            $previewMissing = implode(', ', array_slice($missingStudents, 0, 10));
+            $suffix = count($missingStudents) > 10 ? ' dan lainnya' : '';
+            set_flash('error', 'Preview dibatalkan. Ditemukan ' . count($missingStudents) . ' siswa pada file yang tidak terdaftar di aplikasi: ' . $previewMissing . $suffix . '.');
             redirect('index.php?page=data-nilai');
         }
 
