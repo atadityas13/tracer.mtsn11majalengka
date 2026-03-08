@@ -286,6 +286,17 @@ body {
     linear-gradient(160deg, #f0fdf4 0%, #f8fafc 44%, #ecfeff 100%);
 }
 
+.landing-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.05) 0.6px, transparent 0.6px);
+  background-size: 20px 20px;
+  opacity: 0.16;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .landing-blur {
   position: absolute;
   border-radius: 999px;
@@ -363,25 +374,6 @@ body {
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
 }
 
-.landing-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr);
-  gap: 1.2rem;
-  align-items: stretch;
-}
-
-.landing-hero-copy,
-.landing-hero-panel {
-  border-radius: 1.1rem;
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-}
-
-.landing-hero-copy {
-  padding: 1.6rem;
-}
-
 .landing-kicker {
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -403,45 +395,81 @@ body {
   max-width: 60ch;
 }
 
-.landing-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.landing-badges span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 999px;
-  padding: 0.45rem 0.7rem;
-  font-size: 0.82rem;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #166534;
-}
-
-.landing-hero-panel {
-  padding: 1.4rem;
-  background: linear-gradient(140deg, #064e3b 0%, #0f766e 100%);
-  color: #fff;
-}
-
-.landing-checklist {
-  padding-left: 1.1rem;
-}
-
-.landing-checklist li {
-  margin-bottom: 0.45rem;
-  color: rgba(255, 255, 255, 0.95);
-}
-
 .landing-upload {
   border-radius: 1.2rem;
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(10px);
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.1);
+}
+
+.landing-intro {
+  text-align: center;
+  max-width: 860px;
+  margin: 0 auto 0.75rem;
+}
+
+.file-picker-ui {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  padding: 0.55rem;
+  background: #ffffff;
+}
+
+.file-name-label {
+  flex: 1;
+  min-width: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-name-label.has-file {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.landing-rules-slider {
+  border-radius: 1.2rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.rule-slide-card {
+  border: 1px solid #dcfce7;
+  border-radius: 0.85rem;
+  background: linear-gradient(160deg, #f8fffb 0%, #ffffff 100%);
+  padding: 0.85rem 0.9rem;
+  min-height: 190px;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.rule-slide-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.rule-slide-title {
+  font-weight: 700;
+  color: #065f46;
+  margin-bottom: 0.55rem;
+}
+
+.landing-rules-slider .carousel-indicators [data-bs-target] {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+}
+
+.landing-rules-slider .carousel-indicators .active {
+  background-color: #059669;
 }
 
 .landing-quick-meta {
@@ -480,6 +508,10 @@ body {
   filter: brightness(0.96);
   transform: translateY(-1px);
   box-shadow: 0 12px 22px rgba(5, 150, 105, 0.24);
+}
+
+.landing-upload-btn:active {
+  transform: translateY(0);
 }
 
 .upload-progress-area {
@@ -578,42 +610,6 @@ body {
   box-shadow: 0 16px 36px rgba(6, 78, 59, 0.3);
 }
 
-.landing-compact-info {
-  margin-top: 0.25rem;
-}
-
-.landing-rules-accordion .accordion-item {
-  border-radius: 0.9rem;
-  border: 1px solid rgba(15, 23, 42, 0.09);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-  overflow: hidden;
-  margin-bottom: 0.75rem;
-}
-
-.landing-rules-accordion .accordion-button {
-  font-weight: 700;
-  color: #064e3b;
-  background: #ffffff;
-  box-shadow: none;
-  padding: 0.85rem 1rem;
-}
-
-.landing-rules-accordion .accordion-button:not(.collapsed) {
-  color: #065f46;
-  background: #ecfdf5;
-}
-
-.landing-rules-accordion .accordion-button:focus {
-  border-color: rgba(16, 185, 129, 0.35);
-  box-shadow: 0 0 0 0.18rem rgba(16, 185, 129, 0.2);
-}
-
-.landing-rules-accordion .accordion-body {
-  background: rgba(255, 255, 255, 0.94);
-  padding: 0.85rem 1rem 1rem;
-}
-
 .landing-checklist-compact {
   padding-left: 1rem;
   color: #334155;
@@ -624,13 +620,55 @@ body {
   margin-bottom: 0.35rem;
 }
 
-@media (max-width: 991.98px) {
-  .landing-hero {
-    grid-template-columns: 1fr;
-  }
+.landing-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: 1rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  text-align: center;
+}
 
+.landing-footer-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #064e3b;
+  letter-spacing: 0.02em;
+}
+
+.landing-footer-desc {
+  margin-top: 0.2rem;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.landing-footer-tagline {
+  margin-top: 0.15rem;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.landing-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 991.98px) {
   .landing-quick-meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rule-slide-card {
+    min-height: 170px;
   }
 }
 
@@ -644,17 +682,56 @@ body {
     width: 100%;
   }
 
-  .landing-hero-copy,
-  .landing-hero-panel {
-    padding: 1rem;
-  }
-
   .upload-progress-head {
     flex-direction: column;
   }
 
   .landing-quick-meta {
     grid-template-columns: 1fr;
+  }
+
+  .file-picker-ui {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.45rem;
+    gap: 0.45rem;
+  }
+
+  .landing-title {
+    font-size: 1.3rem;
+    line-height: 1.22;
+  }
+
+  .landing-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .rule-slide-card {
+    min-height: 152px;
+    padding: 0.7rem 0.75rem;
+  }
+
+  .landing-checklist-compact {
+    font-size: 0.84rem;
+    padding-left: 0.9rem;
+  }
+
+  .landing-footer-desc,
+  .landing-footer-tagline {
+    font-size: 0.78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-reveal,
+  .landing-upload-btn,
+  .rule-slide-card {
+    transition: none !important;
+  }
+
+  .landing-reveal {
+    opacity: 1;
+    transform: none;
   }
 }
 

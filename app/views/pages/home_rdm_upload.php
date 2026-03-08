@@ -770,16 +770,16 @@ $isLoggedIn = current_user() !== null;
             </div>
         <?php endif; ?>
 
-        <div class="row justify-content-center mb-3">
-            <div class="col-xl-9 col-lg-10">
-                <section class="landing-upload card border-0 shadow-lg">
-                    <div class="card-body p-4">
-                        <div class="text-center mb-3">
-                            <p class="landing-kicker mb-1">Portal Guru dan Wali Kelas</p>
-                            <h1 class="h4 fw-semibold mb-1 text-success-emphasis">Upload Nilai RDM</h1>
-                            <p class="text-secondary small mb-0">Unggah file, preview hasil validasi, lalu konfirmasi simpan.</p>
-                        </div>
+        <section class="landing-intro landing-reveal mb-3" style="--reveal-delay: 40ms;">
+            <p class="landing-kicker mb-1">Portal Guru dan Wali Kelas</p>
+            <h1 class="landing-title mb-1">Upload Nilai RDM Terintegrasi</h1>
+            <p class="landing-subtitle mb-0">Unggah file RDM, lakukan preview validasi, lalu konfirmasi simpan sesuai tahun ajaran dan semester aktif.</p>
+        </section>
 
+        <div class="row g-3 align-items-stretch mb-3 landing-reveal" style="--reveal-delay: 120ms;">
+            <div class="col-lg-7">
+                <section class="landing-upload card border-0 shadow-lg h-100">
+                    <div class="card-body p-4">
                         <div class="landing-quick-meta mb-3">
                             <span><i class="bi bi-calendar2-check"></i> TA Aktif: <?= e((string) $setting['tahun_ajaran']) ?></span>
                             <span><i class="bi bi-layers"></i> Semester Target: <?= e($targetSemesterLabel) ?></span>
@@ -799,12 +799,18 @@ $isLoggedIn = current_user() !== null;
                         <form id="rdmUploadForm" method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="preview_upload">
-                            <div class="col-md-8">
-                                <label for="file" class="form-label fw-semibold mb-1">File Template RDM (.xlsx/.xls)</label>
-                                <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
-                                <div class="form-text">Struktur header wajib sesuai template asli RDM.</div>
+                            <div class="col-12">
+                                <label for="file" class="form-label fw-semibold mb-1">File Template RDM</label>
+                                <input type="file" class="visually-hidden" id="file" name="file" accept=".xlsx,.xls" required>
+                                <div class="file-picker-ui">
+                                    <button type="button" id="chooseFileBtn" class="btn btn-outline-success">
+                                        <i class="bi bi-folder2-open me-1"></i> Pilih File
+                                    </button>
+                                    <span id="fileNameLabel" class="file-name-label">Belum ada file dipilih</span>
+                                </div>
+                                <div class="form-text">Pastikan file berasal dari template RDM asli agar pemetaan mapel berjalan otomatis.</div>
                             </div>
-                            <div class="col-md-4 d-grid">
+                            <div class="col-12 d-grid mt-1">
                                 <button id="uploadSubmitBtn" type="submit" class="btn landing-upload-btn">
                                     <i class="bi bi-search me-1"></i> Preview Upload
                                 </button>
@@ -813,9 +819,55 @@ $isLoggedIn = current_user() !== null;
                     </div>
                 </section>
             </div>
+
+            <div class="col-lg-5">
+                <section class="landing-rules-slider card border-0 h-100">
+                    <div class="card-body p-3">
+                        <h2 class="h6 mb-3 text-success-emphasis">Ketentuan Upload</h2>
+                        <div id="rulesCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="6500">
+                            <div class="carousel-indicators position-static mb-2">
+                                <button type="button" data-bs-target="#rulesCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+                                <button type="button" data-bs-target="#rulesCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                            </div>
+                            <div class="carousel-inner">
+                                <div class="carousel-item active">
+                                    <div class="rule-slide-card">
+                                        <div class="rule-slide-title"><i class="bi bi-journal-check me-1"></i>Ketentuan Inti</div>
+                                        <ul class="landing-checklist-compact mb-0">
+                                            <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong>.</li>
+                                            <li>Kolom <strong>NISN</strong> wajib tersedia.</li>
+                                            <li>Nilai valid pada rentang <strong>7-100</strong>.</li>
+                                            <li>Data finalisasi tidak akan ditimpa.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="carousel-item">
+                                    <div class="rule-slide-card">
+                                        <div class="rule-slide-title"><i class="bi bi-shield-lock me-1"></i>Validasi Ketat Sistem</div>
+                                        <ul class="landing-checklist-compact mb-0">
+                                            <li>File harus hasil ekspor asli RDM.</li>
+                                            <li>Jika 1 NISN tidak ditemukan, upload dibatalkan penuh.</li>
+                                            <li>Jika 1 siswa sudah memiliki nilai TA aktif, upload dibatalkan penuh.</li>
+                                            <li>Mapel dibaca otomatis dari header template.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-3">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-target="#rulesCarousel" data-bs-slide="prev">
+                                    <i class="bi bi-chevron-left"></i> Sebelumnya
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-target="#rulesCarousel" data-bs-slide="next">
+                                    Berikutnya <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </div>
 
-        <section id="uploadProgressArea" class="upload-progress-area mb-3 <?= (($flash['type'] ?? '') === 'success') ? 'is-complete' : '' ?>" aria-live="polite">
+        <section id="uploadProgressArea" class="upload-progress-area landing-reveal mb-3 <?= (($flash['type'] ?? '') === 'success') ? 'is-complete' : '' ?>" style="--reveal-delay: 180ms;" aria-live="polite">
             <div class="upload-progress-head">
                 <div>
                     <p id="uploadProgressTitle" class="upload-progress-title mb-1">Menyiapkan unggah file...</p>
@@ -835,7 +887,7 @@ $isLoggedIn = current_user() !== null;
 
         <!-- PREVIEW & CONFIRMATION SECTION (Only show if preview exists) -->
         <?php if ($homePreview): ?>
-            <div class="row justify-content-center mb-3">
+            <div class="row justify-content-center mb-3 landing-reveal" style="--reveal-delay: 220ms;">
                 <div class="col-xl-9 col-lg-10">
                     <section class="card border-2 border-info bg-info-light">
                         <div class="card-body p-4">
@@ -904,46 +956,15 @@ $isLoggedIn = current_user() !== null;
             </div>
         <?php endif; ?>
 
-        <section class="landing-compact-info">
-            <div class="accordion landing-rules-accordion" id="landingRulesAccordion">
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="rules-basic-heading">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#rules-basic" aria-expanded="true" aria-controls="rules-basic">
-                            <i class="bi bi-journal-check me-2"></i> Ketentuan Inti Upload
-                        </button>
-                    </h2>
-                    <div id="rules-basic" class="accordion-collapse collapse show" aria-labelledby="rules-basic-heading" data-bs-parent="#landingRulesAccordion">
-                        <div class="accordion-body">
-                            <ul class="landing-checklist-compact mb-0">
-                                <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong>.</li>
-                                <li>Kolom <strong>NISN</strong> wajib tersedia.</li>
-                                <li>Nilai valid pada rentang <strong>7-100</strong>.</li>
-                                <li>Data finalisasi tidak akan ditimpa.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="rules-validation-heading">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#rules-validation" aria-expanded="false" aria-controls="rules-validation">
-                            <i class="bi bi-shield-lock me-2"></i> Validasi Ketat Sistem
-                        </button>
-                    </h2>
-                    <div id="rules-validation" class="accordion-collapse collapse" aria-labelledby="rules-validation-heading" data-bs-parent="#landingRulesAccordion">
-                        <div class="accordion-body">
-                            <ul class="landing-checklist-compact mb-0">
-                                <li>File harus hasil ekspor asli RDM.</li>
-                                <li>Jika 1 NISN tidak ditemukan, upload dibatalkan penuh.</li>
-                                <li>Jika 1 siswa sudah memiliki nilai TA aktif, upload dibatalkan penuh.</li>
-                                <li>Mapel dibaca otomatis dari header template.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </main>
+
+    <footer class="landing-footer landing-reveal" style="--reveal-delay: 260ms;">
+        <div class="container py-3">
+            <div class="landing-footer-title">TRACER MTsN 11 Majalengka</div>
+            <div class="landing-footer-desc">Sistem manajemen unggah dan validasi nilai rapor berbasis RDM untuk layanan data akademik yang akurat, aman, dan terstandar.</div>
+            <div class="landing-footer-tagline">Tagline: Tertib Data, Tepat Nilai, Terjaga Mutu.</div>
+        </div>
+    </footer>
 </div>
 
 <?php if ($flash && ($flash['type'] ?? '') === 'success'): ?>
@@ -970,6 +991,10 @@ $isLoggedIn = current_user() !== null;
 document.addEventListener('DOMContentLoaded', function () {
     var form = document.getElementById('rdmUploadForm');
     var submitBtn = document.getElementById('uploadSubmitBtn');
+    var fileInput = document.getElementById('file');
+    var chooseFileBtn = document.getElementById('chooseFileBtn');
+    var fileNameLabel = document.getElementById('fileNameLabel');
+    var rulesCarouselEl = document.getElementById('rulesCarousel');
     var progressArea = document.getElementById('uploadProgressArea');
     var progressBar = document.getElementById('uploadProgressBar');
     var progressWrap = progressArea ? progressArea.querySelector('.upload-progress-bar-wrap') : null;
@@ -1024,6 +1049,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (form) {
+        if (chooseFileBtn && fileInput) {
+            chooseFileBtn.addEventListener('click', function () {
+                fileInput.click();
+            });
+        }
+
+        if (fileInput && fileNameLabel) {
+            fileInput.addEventListener('change', function () {
+                var name = (fileInput.files && fileInput.files[0]) ? fileInput.files[0].name : '';
+                fileNameLabel.textContent = name !== '' ? name : 'Belum ada file dipilih';
+                fileNameLabel.classList.toggle('has-file', name !== '');
+            });
+        }
+
         form.addEventListener('submit', function () {
             if (!progressArea || !submitBtn) {
                 return;
@@ -1059,6 +1098,43 @@ document.addEventListener('DOMContentLoaded', function () {
     if (successToastEl && window.bootstrap && window.bootstrap.Toast) {
         var toast = new window.bootstrap.Toast(successToastEl);
         toast.show();
+    }
+
+    if (rulesCarouselEl && window.bootstrap && window.bootstrap.Carousel) {
+        var carousel = new window.bootstrap.Carousel(rulesCarouselEl, {
+            interval: 6500,
+            pause: false,
+            touch: true,
+            wrap: true
+        });
+
+        rulesCarouselEl.addEventListener('mouseenter', function () {
+            carousel.pause();
+        });
+
+        rulesCarouselEl.addEventListener('mouseleave', function () {
+            carousel.cycle();
+        });
+    }
+
+    var revealNodes = document.querySelectorAll('.landing-reveal');
+    if (revealNodes.length > 0 && 'IntersectionObserver' in window) {
+        var revealObserver = new IntersectionObserver(function (entries, observer) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.12 });
+
+        revealNodes.forEach(function (node) {
+            revealObserver.observe(node);
+        });
+    } else {
+        revealNodes.forEach(function (node) {
+            node.classList.add('is-visible');
+        });
     }
 });
 
