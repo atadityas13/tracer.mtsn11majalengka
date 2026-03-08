@@ -761,35 +761,7 @@ $isLoggedIn = current_user() !== null;
         </a>
     </header>
 
-    <main class="container pb-5">
-        <section class="landing-hero mb-4 mb-lg-5">
-            <div class="landing-hero-copy">
-                <p class="landing-kicker mb-2">Portal Guru & Wali Kelas</p>
-                <h1 class="landing-title">Upload Nilai RDM Cepat, Akurat, dan Selaras Semester Aktif</h1>
-                <p class="landing-subtitle mb-4">
-                    Halaman ini menjadi akses utama untuk unggah nilai berdasarkan template RDM.
-                    Sistem akan memetakan mapel otomatis, memvalidasi semester aktif, dan langsung menyimpan ke data rapor TRACER.
-                </p>
-                <div class="landing-badges">
-                    <span><i class="bi bi-shield-check"></i> Validasi format</span>
-                    <span><i class="bi bi-calendar2-check"></i> TA aktif: <?= e((string) $setting['tahun_ajaran']) ?></span>
-                    <span><i class="bi bi-layers"></i> Semester target: <?= e($targetSemesterLabel) ?></span>
-                </div>
-            </div>
-            <div class="landing-hero-panel">
-                <h2 class="h5 mb-3">Ketentuan Upload</h2>
-                <ul class="landing-checklist mb-0">
-                    <li>Gunakan file <strong>.xlsx</strong> atau <strong>.xls</strong>.</li>
-                    <li>Kolom <strong>NISN</strong> wajib ada di header.</li>
-                    <li>Mapel dikenali melalui kode: QH, AA, FIK, SKI, BAR, PP, BINDO, MTK, IPA, IPS, BING, PJOK, INFO, SBP, BSD.</li>
-                    <li>Rentang nilai valid: 7 sampai 100.</li>
-                    <li>File wajib hasil ekspor asli RDM (metadata kelas, semester, dan tahun ajaran harus valid).</li>
-                    <li>Jika ada 1 NISN saja yang tidak ada di aplikasi, seluruh upload akan dibatalkan.</li>
-                    <li>Jika ada 1 siswa saja yang sudah punya nilai di tahun ajaran aktif, seluruh upload akan dibatalkan.</li>
-                    <li>Data yang sudah finalisasi tidak akan ditimpa.</li>
-                </ul>
-            </div>
-        </section>
+    <main class="container pb-4">
 
         <?php if ($flash && ($flash['type'] ?? '') !== 'success'): ?>
             <div class="alert alert-<?= e((string) ($flash['type'] === 'error' ? 'danger' : ($flash['type'] === 'warning' ? 'warning' : 'info'))) ?> border-0 shadow-sm mb-4" role="alert">
@@ -798,7 +770,52 @@ $isLoggedIn = current_user() !== null;
             </div>
         <?php endif; ?>
 
-        <section id="uploadProgressArea" class="upload-progress-area mb-4 <?= (($flash['type'] ?? '') === 'success') ? 'is-complete' : '' ?>" aria-live="polite">
+        <div class="row justify-content-center mb-3">
+            <div class="col-xl-9 col-lg-10">
+                <section class="landing-upload card border-0 shadow-lg">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-3">
+                            <p class="landing-kicker mb-1">Portal Guru dan Wali Kelas</p>
+                            <h1 class="h4 fw-semibold mb-1 text-success-emphasis">Upload Nilai RDM</h1>
+                            <p class="text-secondary small mb-0">Unggah file, preview hasil validasi, lalu konfirmasi simpan.</p>
+                        </div>
+
+                        <div class="landing-quick-meta mb-3">
+                            <span><i class="bi bi-calendar2-check"></i> TA Aktif: <?= e((string) $setting['tahun_ajaran']) ?></span>
+                            <span><i class="bi bi-layers"></i> Semester Target: <?= e($targetSemesterLabel) ?></span>
+                            <span><i class="bi bi-123"></i> Nilai: 7-100</span>
+                            <span><i class="bi bi-key"></i> Token: <?= $requireUploadToken && $tokenMode !== 'disabled' ? 'Aktif' : 'Nonaktif' ?></span>
+                        </div>
+
+                        <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
+                            <div class="alert alert-warning border-0 py-2 px-3 mb-3" role="alert">
+                                <div class="small mb-0">
+                                    <strong>Verifikasi token aktif.</strong>
+                                    <?= $currentUploadToken ? ' Token saat ini tersedia dan dapat digunakan saat konfirmasi.' : ' Silakan minta token ke admin/kurikulum sebelum konfirmasi.' ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <form id="rdmUploadForm" method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
+                            <?= csrf_input() ?>
+                            <input type="hidden" name="action" value="preview_upload">
+                            <div class="col-md-8">
+                                <label for="file" class="form-label fw-semibold mb-1">File Template RDM (.xlsx/.xls)</label>
+                                <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                                <div class="form-text">Struktur header wajib sesuai template asli RDM.</div>
+                            </div>
+                            <div class="col-md-4 d-grid">
+                                <button id="uploadSubmitBtn" type="submit" class="btn landing-upload-btn">
+                                    <i class="bi bi-search me-1"></i> Preview Upload
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <section id="uploadProgressArea" class="upload-progress-area mb-3 <?= (($flash['type'] ?? '') === 'success') ? 'is-complete' : '' ?>" aria-live="polite">
             <div class="upload-progress-head">
                 <div>
                     <p id="uploadProgressTitle" class="upload-progress-title mb-1">Menyiapkan unggah file...</p>
@@ -816,81 +833,10 @@ $isLoggedIn = current_user() !== null;
             </div>
         </section>
 
-        <!-- FORM UPLOAD UTAMA (Centered) -->
-        <div class="row justify-content-center mb-5">
-            <div class="col-lg-8">
-                <section class="landing-upload card border-0 shadow-lg">
-                    <div class="card-body p-4 p-lg-5">
-                        <div class="mb-4 text-center">
-                            <h2 class="h4 fw-bold mb-2">📤 Upload File Nilai RDM</h2>
-                            <p class="text-secondary small mb-0">Pilih file template RDM dan sistem akan memvalidasi serta menyimpan secara otomatis</p>
-                        </div>
-
-                        <!-- Token Status Alert -->
-                        <?php if ($requireUploadToken && $tokenMode !== 'disabled'): ?>
-                            <div class="alert alert-warning border-0 mb-4" role="alert">
-                                <div class="fw-semibold mb-1"><i class="bi bi-key-fill"></i> Verifikasi Token Diperlukan</div>
-                                <div class="small text-secondary">
-                                    Anda harus memasukkan token dari admin/kurikulum untuk verifikasi upload.
-                                    <?php if ($currentUploadToken): ?>
-                                        <span class="d-block mt-1"><strong class="text-success">✓ Token tersedia</strong></span>
-                                    <?php else: ?>
-                                        <span class="d-block mt-1"><strong class="text-warning">⚠️ Hubungi admin untuk mendapatkan token</strong></span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
-                        <!-- Upload Form -->
-                        <form id="rdmUploadForm" method="post" enctype="multipart/form-data">
-                            <?= csrf_input() ?>
-                            <input type="hidden" name="action" value="preview_upload">
-                            
-                            <div class="mb-4">
-                                <label for="file" class="form-label fw-semibold">Pilih File Template RDM (.xlsx / .xls)</label>
-                                <div class="mb-2">
-                                    <input type="file" class="form-control form-control-lg" id="file" name="file" accept=".xlsx,.xls" required>
-                                </div>
-                                <div class="form-text">Struktur header harus sesuai template asli agar mapel terdeteksi otomatis</div>
-                            </div>
-
-                            <div class="d-grid gap-2">
-                                <button id="uploadSubmitBtn" type="submit" class="btn btn-lg landing-upload-btn">
-                                    <i class="bi bi-cloud-arrow-up me-2"></i> Preview Upload
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- Info Box -->
-                <div class="mt-4 p-3 bg-light rounded border">
-                    <div class="row g-3 small">
-                        <div class="col-6 col-md-3 text-center">
-                            <div class="fw-bold text-success">Tahun Ajaran</div>
-                            <div class="text-secondary"><?= e((string) $setting['tahun_ajaran']) ?></div>
-                        </div>
-                        <div class="col-6 col-md-3 text-center">
-                            <div class="fw-bold text-primary">Semester Target</div>
-                            <div class="text-secondary"><?= e($targetSemesterLabel) ?></div>
-                        </div>
-                        <div class="col-6 col-md-3 text-center">
-                            <div class="fw-bold text-info">Range Nilai</div>
-                            <div class="text-secondary">7 - 100</div>
-                        </div>
-                        <div class="col-6 col-md-3 text-center">
-                            <div class="fw-bold text-warning">Status</div>
-                            <div class="text-secondary"><?= $requireUploadToken && $tokenMode !== 'disabled' ? 'Token ON' : 'Token OFF' ?></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- PREVIEW & CONFIRMATION SECTION (Only show if preview exists) -->
         <?php if ($homePreview): ?>
-            <div class="row justify-content-center">
-                <div class="col-lg-8">
+            <div class="row justify-content-center mb-3">
+                <div class="col-xl-9 col-lg-10">
                     <section class="card border-2 border-info bg-info-light">
                         <div class="card-body p-4">
                             <div class="d-flex align-items-center mb-4">
@@ -957,6 +903,33 @@ $isLoggedIn = current_user() !== null;
                 </div>
             </div>
         <?php endif; ?>
+
+        <section class="landing-compact-info">
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="landing-info-card h-100">
+                        <h2 class="h6 mb-2">Ketentuan Inti Upload</h2>
+                        <ul class="landing-checklist-compact mb-0">
+                            <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong>.</li>
+                            <li>Kolom <strong>NISN</strong> wajib tersedia.</li>
+                            <li>Nilai valid pada rentang <strong>7-100</strong>.</li>
+                            <li>Data finalisasi tidak akan ditimpa.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="landing-info-card h-100">
+                        <h2 class="h6 mb-2">Validasi Ketat Sistem</h2>
+                        <ul class="landing-checklist-compact mb-0">
+                            <li>File harus hasil ekspor asli RDM.</li>
+                            <li>Jika 1 NISN tidak ditemukan, upload dibatalkan penuh.</li>
+                            <li>Jika 1 siswa sudah memiliki nilai TA aktif, upload dibatalkan penuh.</li>
+                            <li>Mapel dibaca otomatis dari header template.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 </div>
 
