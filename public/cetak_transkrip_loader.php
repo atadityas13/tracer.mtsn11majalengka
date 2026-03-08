@@ -118,7 +118,7 @@ foreach ($forwardFields as $field) {
         <p>Sistem sedang membuat dokumen PDF. Mohon tunggu sebentar.</p>
         <div class="hint">Halaman ini akan otomatis beralih ke preview PDF.</div>
 
-        <form id="forwardForm" method="post" action="index.php?page=ekspor-cetak" class="manual">
+        <form id="forwardForm" method="post" action="cetak_transkrip.php" class="manual">
             <?php foreach ($forwardData as $key => $value): ?>
                 <input type="hidden" name="<?= e($key) ?>" value="<?= e($value) ?>">
             <?php endforeach; ?>
