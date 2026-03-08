@@ -922,7 +922,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         <i class="bi bi-info-circle"></i> Belum ada data alumni. Lakukan proses migrasi siswa ke alumni terlebih dahulu di menu <strong>Kelulusan</strong>.
                     </div>
                 <?php else: ?>
-                <form method="post" id="formTranskrip" class="row g-3 align-items-end">
+                <form method="post" id="formTranskrip" target="_blank" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="transkrip">
                     <input type="hidden" name="titimangsa" id="titimangsa_value">
@@ -960,7 +960,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         <i class="bi bi-exclamation-triangle"></i> Data alumni sudah ada, tetapi belum ada <strong>angkatan lulus</strong> yang terisi. Lengkapi angkatan di menu <strong>Kelulusan</strong> agar fitur cetak per angkatan bisa digunakan.
                     </div>
                 <?php else: ?>
-                <form method="post" id="formBulkTranskrip" class="row g-3 align-items-end">
+                <form method="post" id="formBulkTranskrip" target="_blank" class="row g-3 align-items-end">
                     <?= csrf_input() ?>
                     <input type="hidden" name="action" value="bulk_transkrip">
                     <input type="hidden" name="titimangsa" id="titimangsa_bulk">
