@@ -483,20 +483,6 @@ if (!function_exists('mark_upload_token_used')) {
     }
 }
 
-        // Hitung offset tahun berdasarkan semester
-        // Semester 1,2 -> offset 0
-        // Semester 3,4 -> offset 1
-        // Semester 5,6 -> offset 2
-        $offsetTahun = (int) floor(($currentSemester - 1) / 2);
-
-        // Hitung tahun ajaran target
-        $tahunAjaranAwal = $tahunAwal + $offsetTahun;
-        $tahunAjaranAkhir = $tahunAjaranAwal + 1;
-
-        return $tahunAjaranAwal . '/' . $tahunAjaranAkhir;
-    }
-}
-
 if (!function_exists('hitung_tahun_masuk_dari_semester')) {
     /**
      * Hitung tahun masuk (backfill) dari tahun ajaran saat ini dan semester
