@@ -37,12 +37,84 @@ if (!in_array(current_user()['role'] ?? '', ['admin', 'kurikulum'])) {
     redirect('index.php?page=dashboard');
 }
 
-enforce_csrf('upload_token_management');
-
 $setting = setting_akademik();
-$action = strtolower(trim((string) ($_POST['action'] ?? '')));
 
-// Get current settings
+// Handle POST actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    enforce_csrf('upload-token-management');
+    
+    $action = strtolower(trim((string) ($_POST['action'] ?? '')));
+
+    // Handle toggle require_upload_token
+    if ($action === 'toggle_require') {
+        $stmt = db()->query("SELECT require_upload_token FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1");
+        $current = $stmt->fetch();
+        $requireToken = ($current['require_upload_token'] ?? 0) == 1;
+        $newState = (int) !$requireToken;
+        
+        $stmt = db()->prepare("UPDATE pengaturan_akademik SET require_upload_token = ? WHERE is_aktif=1");
+        $stmt->execute([$newState]);
+        
+        set_flash('success', $newState ? 'Token verifikasi DIAKTIFKAN.' : 'Token verifikasi DINONAKTIFKAN.');
+        redirect('index.php?page=upload-token-management');
+    }
+
+    // Handle change token mode
+    if ($action === 'change_mode') {
+        $newMode = strtolower(trim((string) ($_POST['mode'] ?? '')));
+        if (in_array($newMode, ['manual', 'daily', 'disabled'])) {
+            $stmt = db()->prepare("UPDATE pengaturan_akademik SET token_mode = ? WHERE is_aktif=1");
+            $stmt->execute([$newMode]);
+            
+            set_flash('success', "Mode token diubah ke: $newMode");
+            redirect('index.php?page=upload-token-management');
+        }
+    }
+
+    // Handle manual token generation
+    if ($action === 'generate_manual') {
+        $token = generate_upload_token('manual', current_user()['username'] ?? 'system', 24);
+        if ($token) {
+            set_flash('success', "Token manual berhasil dibuat: $token");
+        } else {
+            set_flash('error', 'Gagal membuat token manual. Silakan coba lagi.');
+        }
+        redirect('index.php?page=upload-token-management');
+    }
+
+    // Handle auto-generate daily token
+    if ($action === 'generate_daily') {
+        // Revoke old daily token for today
+        $today = date('Y-m-d');
+        $stmt = db()->prepare("
+            UPDATE upload_token 
+            SET is_used = 1
+            WHERE created_tahun_ajaran = :ta
+            AND created_semester_aktif = :sem
+            AND token_type = 'daily'
+            AND DATE(created_at) = :today
+            AND is_used = 0
+        ");
+        $stmt->execute([
+            'ta' => $setting['tahun_ajaran'],
+            'sem' => $setting['semester_aktif'],
+            'today' => $today
+        ]);
+        
+        $token = generate_upload_token('daily', current_user()['username'] ?? 'system', 24);
+        if ($token) {
+            set_flash('success', "Token harian otomatis dibuat: $token (berlaku 24 jam)");
+        } else {
+            set_flash('error', 'Gagal membuat token harian. Silakan coba lagi.');
+        }
+        redirect('index.php?page=upload-token-management');
+    }
+    
+    // If no valid action, redirect
+    redirect('index.php?page=upload-token-management');
+}
+
+// Get current settings for display
 $stmt = db()->query("SELECT require_upload_token, token_mode FROM pengaturan_akademik WHERE is_aktif=1 LIMIT 1");
 $tokenSetting = $stmt->fetch();
 $requireToken = $tokenSetting['require_upload_token'] == 1;
@@ -50,67 +122,6 @@ $tokenMode = $tokenSetting['token_mode'] ?? 'daily';
 
 // Get current valid token
 $currentToken = get_current_upload_token();
-
-// Handle toggle require_upload_token
-if ($action === 'toggle_require') {
-    $newState = (int) !$requireToken;
-    $stmt = db()->prepare("UPDATE pengaturan_akademik SET require_upload_token = ? WHERE is_aktif=1");
-    $stmt->execute([$newState]);
-    
-    set_flash('success', $newState ? 'Token verifikasi DIAKTIFKAN.' : 'Token verifikasi DINONAKTIFKAN.');
-    redirect('index.php?page=upload-token-management');
-}
-
-// Handle change token mode
-if ($action === 'change_mode') {
-    $newMode = strtolower(trim((string) ($_POST['mode'] ?? '')));
-    if (in_array($newMode, ['manual', 'daily', 'disabled'])) {
-        $stmt = db()->prepare("UPDATE pengaturan_akademik SET token_mode = ? WHERE is_aktif=1");
-        $stmt->execute([$newMode]);
-        
-        set_flash('success', "Mode token diubah ke: $newMode");
-        redirect('index.php?page=upload-token-management');
-    }
-}
-
-// Handle manual token generation
-if ($action === 'generate_manual') {
-    $token = generate_upload_token('manual', current_user()['username'] ?? 'system', 24);
-    if ($token) {
-        set_flash('success', "Token manual berhasil dibuat: $token");
-    } else {
-        set_flash('error', 'Gagal membuat token manual. Silakan coba lagi.');
-    }
-    redirect('index.php?page=upload-token-management');
-}
-
-// Handle auto-generate daily token
-if ($action === 'generate_daily') {
-    // Revoke old daily token for today
-    $today = date('Y-m-d');
-    $stmt = db()->prepare("
-        UPDATE upload_token 
-        SET is_used = 1
-        WHERE created_tahun_ajaran = :ta
-        AND created_semester_aktif = :sem
-        AND token_type = 'daily'
-        AND DATE(created_at) = :today
-        AND is_used = 0
-    ");
-    $stmt->execute([
-        'ta' => $setting['tahun_ajaran'],
-        'sem' => $setting['semester_aktif'],
-        'today' => $today
-    ]);
-    
-    $token = generate_upload_token('daily', current_user()['username'] ?? 'system', 24);
-    if ($token) {
-        set_flash('success', "Token harian otomatis dibuat: $token (berlaku 24 jam)");
-    } else {
-        set_flash('error', 'Gagal membuat token harian. Silakan coba lagi.');
-    }
-    redirect('index.php?page=upload-token-management');
-}
 
 // Get token history
 $stmt = db()->prepare("
