@@ -1153,7 +1153,8 @@ $isLoggedIn = current_user() !== null;
                             </div>
 
                             <div class="alert alert-warning border-0 mt-3 mb-0 small">
-                                Jika ada kesalahan nilai yang terupload, silakan menghubungi admin/kurikulum untuk perbaikan nilai.
+                                Dokumen fisik leger diserahkan kepada kurikulum sebagai Arsip.<br>Jika ada kesalahan nilai yang terupload, silakan menghubungi admin/kurikulum untuk perbaikan nilai.<br>
+                                Pastikan untuk menyimpan file asli yang sudah diupload sebagai bukti jika diperlukan untuk audit atau perbaikan di kemudian hari.
                             </div>
 
                             <div class="d-grid mt-3">
@@ -1230,14 +1231,14 @@ $isLoggedIn = current_user() !== null;
                                     <div class="col-12">
                                         <div class="alert alert-warning border-0 py-2 px-3 mb-0" role="alert">
                                             <div class="small mb-0">
-                                                <strong>Verifikasi token aktif.</strong> Silakan input token dari admin/kurikulum untuk konfirmasi simpan.
+                                                <strong>Verifikasi token aktif.</strong> Token dibutuhkan saat konfirmasi simpan.
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-12">
-                                        <label for="admin_upload_token" class="form-label fw-semibold">Token Konfirmasi dari Admin/Kurikulum</label>
-                                        <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" placeholder="Masukkan 6 digit token" inputmode="numeric" maxlength="6" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)" required>
-                                        <div class="form-text mt-2">Token tidak ditampilkan di halaman ini. Minta token ke admin/kurikulum.</div>
+                                        <label for="admin_upload_token" class="form-label fw-semibold">Token Konfirmas</label>
+                                        <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" placeholder="Masukkan token admin (huruf dan angka)" maxlength="20" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,20)" required>
+                                        <div class="form-text mt-2">Token ini digunakan untuk memastikan bahwa hanya guru yang berwenang yang dapat mengirim nilai. Jika Anda belum memiliki token, silakan hubungi admin/kurikulum untuk mendapatkannya.</div>
                                     </div>
                                 <?php else: ?>
                                     <!-- Token tidak diaktifkan -->
