@@ -434,6 +434,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('index.php?page=data-nilai');
     }
 
+    if ($action === 'kosongkan_nilai_siswa') {
+        $nisn = trim((string) ($_POST['nisn'] ?? ''));
+        $semesterTarget = strtoupper(trim((string) ($_POST['semester_target'] ?? '')));
+
+        if ($nisn === '') {
+            set_flash('error', 'NISN tidak valid untuk proses kosongkan nilai.');
+            redirect('index.php?page=data-nilai');
+        }
+
+        if ($semesterTarget === 'UAM') {
+            $stDeleteUam = db()->prepare('DELETE FROM nilai_uam WHERE nisn=:nisn');
+            $stDeleteUam->execute(['nisn' => $nisn]);
+            $deleted = $stDeleteUam->rowCount();
+            set_flash('success', 'Nilai UAM berhasil dikosongkan. Total data dihapus: ' . $deleted . '.');
+            redirect('index.php?page=data-nilai&semester_view=UAM');
+        }
+
+        $semesterInt = (int) $semesterTarget;
+        if ($semesterInt < 1 || $semesterInt > 6) {
+            set_flash('error', 'Semester target tidak valid untuk proses kosongkan nilai.');
+            redirect('index.php?page=data-nilai');
+        }
+
+        $stCountFinalized = db()->prepare('SELECT COUNT(*) c FROM nilai_rapor
+            WHERE nisn=:nisn AND semester=:semester AND tahun_ajaran=:ta AND is_finalized=1');
+        $stCountFinalized->execute([
+            'nisn' => $nisn,
+            'semester' => $semesterInt,
+            'ta' => (string) $setting['tahun_ajaran'],
+        ]);
+        $finalizedCount = (int) ($stCountFinalized->fetch()['c'] ?? 0);
+
+        $stDeleteRapor = db()->prepare('DELETE FROM nilai_rapor
+            WHERE nisn=:nisn AND semester=:semester AND tahun_ajaran=:ta AND is_finalized=0');
+        $stDeleteRapor->execute([
+            'nisn' => $nisn,
+            'semester' => $semesterInt,
+            'ta' => (string) $setting['tahun_ajaran'],
+        ]);
+        $deleted = $stDeleteRapor->rowCount();
+
+        if ($finalizedCount > 0) {
+            set_flash('warning', 'Nilai semester ' . $semesterInt . ' dikosongkan: ' . $deleted . ' data. ' . $finalizedCount . ' data finalized tidak dihapus.');
+        } else {
+            set_flash('success', 'Nilai semester ' . $semesterInt . ' berhasil dikosongkan. Total data dihapus: ' . $deleted . '.');
+        }
+
+        redirect('index.php?page=data-nilai&semester_view=' . $semesterInt);
+    }
+
     if ($action === 'confirm_import_rapor_rdm') {
         $preview = $_SESSION[$rdmPreviewSessionKey] ?? null;
         if (!is_array($preview) || empty($preview['entries']) || empty($preview['meta'])) {
@@ -959,6 +1009,7 @@ $defaultMonitorSemester = $monitorSemesterOptions[0] ?? '1';
 $monitorSemester = strtoupper(trim($_GET['semester_view'] ?? $defaultMonitorSemester));
 $monitorStatus = trim($_GET['status_upload'] ?? 'all');
 $monitorStatus = in_array($monitorStatus, ['all', 'uploaded', 'not_uploaded'], true) ? $monitorStatus : 'all';
+$monitorKelas = trim((string) ($_GET['kelas_filter_monitoring'] ?? ''));
 
 if (!in_array($monitorSemester, $monitorSemesterOptions, true)) {
     $monitorSemester = $defaultMonitorSemester;
@@ -1035,9 +1086,19 @@ if (count($nisnListMonitor) > 0) {
 }
 
 $rowsMonitor = [];
+$kelasMonitorOptions = [];
 foreach ($students as $student) {
     $entryCount = (int) ($entryCountByNisn[(string) ($student['nisn'] ?? '')] ?? 0);
     $statusLabel = 'Belum Terupload';
+    $kelasValue = trim((string) ($student['kelas'] ?? ''));
+
+    if ($kelasValue !== '') {
+        $kelasMonitorOptions[$kelasValue] = $kelasValue;
+    }
+
+    if ($monitorKelas !== '' && $kelasValue !== $monitorKelas) {
+        continue;
+    }
 
     if ($entryCount > 0) {
         $statusLabel = $entryCount >= $mapelCount ? 'Sudah Terupload (Lengkap)' : 'Sudah Terupload (Sebagian)';
@@ -1075,6 +1136,8 @@ if ($monitorSearch !== '') {
     });
 }
 
+ksort($kelasMonitorOptions, SORT_NATURAL | SORT_FLAG_CASE);
+
 // Sorting monitoring
 $monitorSortBy = $_GET['sort_by_monitoring'] ?? 'nama';
 $monitorSortBy = in_array($monitorSortBy, ['nama', 'current_semester', 'status_label'], true) ? $monitorSortBy : 'nama';
@@ -1097,8 +1160,51 @@ $monitorPage = min($monitorPage, max(1, $totalMonitorPages));
 $monitorOffset = ($monitorPage - 1) * $monitorPerPage;
 $rowsMonitorPaginated = array_slice($rowsMonitor, $monitorOffset, $monitorPerPage);
 
+$monitorNilaiByNisn = [];
+$nisnListPaginated = array_values(array_unique(array_filter(array_map(static function ($row) {
+    return (string) ($row['nisn'] ?? '');
+}, $rowsMonitorPaginated), static function ($nisn) {
+    return $nisn !== '';
+})));
+
+if (count($nisnListPaginated) > 0) {
+    $placeholders = implode(',', array_fill(0, count($nisnListPaginated), '?'));
+    if ($monitorSemester === 'UAM') {
+        $sqlNilaiDetail = "SELECT nu.nisn, m.nama_mapel, nu.nilai_angka
+            FROM nilai_uam nu
+            JOIN mapel m ON nu.mapel_id = m.id
+            WHERE nu.nisn IN ({$placeholders})
+            ORDER BY m.id";
+        $stNilaiDetail = db()->prepare($sqlNilaiDetail);
+        $stNilaiDetail->execute($nisnListPaginated);
+    } else {
+        $sqlNilaiDetail = "SELECT nr.nisn, m.nama_mapel, nr.nilai_angka, nr.is_finalized
+            FROM nilai_rapor nr
+            JOIN mapel m ON nr.mapel_id = m.id
+            WHERE nr.semester = ? AND nr.tahun_ajaran = ? AND nr.nisn IN ({$placeholders})
+            ORDER BY m.id";
+        $stNilaiDetail = db()->prepare($sqlNilaiDetail);
+        $stNilaiDetail->execute(array_merge([(int) $monitorSemester, (string) $setting['tahun_ajaran']], $nisnListPaginated));
+    }
+
+    foreach ($stNilaiDetail->fetchAll() as $nilaiRow) {
+        $nisnKey = (string) ($nilaiRow['nisn'] ?? '');
+        if ($nisnKey === '') {
+            continue;
+        }
+        if (!isset($monitorNilaiByNisn[$nisnKey])) {
+            $monitorNilaiByNisn[$nisnKey] = [];
+        }
+        $monitorNilaiByNisn[$nisnKey][] = [
+            'mapel' => (string) ($nilaiRow['nama_mapel'] ?? '-'),
+            'nilai' => (float) ($nilaiRow['nilai_angka'] ?? 0),
+            'is_finalized' => (int) ($nilaiRow['is_finalized'] ?? 0),
+        ];
+    }
+}
+
 // Helper function for clickable monitoring sort links
-$getMonitorSortLink = function($column, $label) use ($monitorSortBy, $monitorSortDir, $monitorSearch, $monitorSemester, $monitorStatus, $monitorPerPage) {
+$getMonitorSortLink = function($column, $label) use ($monitorSortBy, $monitorSortDir, $monitorSearch, $monitorSemester, $monitorStatus, $monitorPerPage, $monitorKelas) {
     $newDir = ($monitorSortBy === $column && $monitorSortDir === 'ASC') ? 'DESC' : 'ASC';
     $indicator = ($monitorSortBy === $column) ? ($monitorSortDir === 'ASC' ? ' ↑' : ' ↓') : '';
     $url = "index.php?page=data-nilai" .
@@ -1107,7 +1213,8 @@ $getMonitorSortLink = function($column, $label) use ($monitorSortBy, $monitorSor
         "&sort_dir_monitoring=" . urlencode($newDir) .
         "&per_page_monitoring=" . urlencode((string) $monitorPerPage) .
         "&semester_view=" . urlencode($monitorSemester) .
-        "&status_upload=" . urlencode($monitorStatus);
+        "&status_upload=" . urlencode($monitorStatus) .
+        "&kelas_filter_monitoring=" . urlencode($monitorKelas);
     return '<a href="' . e($url) . '" class="text-dark text-decoration-none">' . e($label) . $indicator . '</a>';
 };
 
@@ -1311,10 +1418,18 @@ require dirname(__DIR__) . '/partials/header.php';
                     <option value="not_uploaded" <?= $monitorStatus === 'not_uploaded' ? 'selected' : '' ?>>Belum Upload</option>
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-2">
+                <select name="kelas_filter_monitoring" class="form-select form-select-sm">
+                    <option value="">Semua Kelas</option>
+                    <?php foreach ($kelasMonitorOptions as $kelasOpt): ?>
+                        <option value="<?= e($kelasOpt) ?>" <?= $monitorKelas === $kelasOpt ? 'selected' : '' ?>><?= e($kelasOpt) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3">
                 <input type="text" name="search_monitoring" class="form-control form-control-sm" placeholder="Cari Nama/NIS/NISN..." value="<?= e($monitorSearch) ?>">
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <button type="submit" class="btn btn-success btn-sm w-100">Cari</button>
             </div>
             <div class="col-md-2">
@@ -1381,7 +1496,23 @@ require dirname(__DIR__) . '/partials/header.php';
                                 </span>
                             </td>
                             <td class="text-end">
-                                <?php if (!$row['uploaded']): ?>
+                                <?php $modalId = 'modalNilaiMonitor' . md5((string) ($row['nisn'] ?? '') . '|' . (string) $monitorSemester); ?>
+                                <?php if ($row['uploaded']): ?>
+                                    <div class="d-inline-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#<?= e($modalId) ?>" title="Lihat Nilai">
+                                            <i class="bi bi-card-list"></i> Lihat Nilai
+                                        </button>
+                                        <form method="post" class="d-inline" data-confirm="Yakin ingin mengosongkan semua nilai siswa ini pada semester terpilih?" data-confirm-title="Konfirmasi Kosongkan Nilai">
+                                            <?= csrf_input() ?>
+                                            <input type="hidden" name="action" value="kosongkan_nilai_siswa">
+                                            <input type="hidden" name="nisn" value="<?= e($row['nisn']) ?>">
+                                            <input type="hidden" name="semester_target" value="<?= e($monitorSemester) ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Kosongkan Nilai">
+                                                <i class="bi bi-eraser"></i> Kosongkan Nilai
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php else: ?>
                                     <button type="button" class="btn btn-sm btn-outline-warning" onclick="if(confirm('Nonaktifkan siswa <?= e($row['nama']) ?>? Status akan diubah menjadi Tidak Melanjutkan.')) document.getElementById('formNonaktif<?= e($row['nisn']) ?>').submit();" title="Nonaktifkan">
                                         <i class="bi bi-x-circle"></i> Nonaktifkan
                                     </button>
@@ -1390,8 +1521,6 @@ require dirname(__DIR__) . '/partials/header.php';
                                         <input type="hidden" name="action" value="nonaktifkan_siswa">
                                         <input type="hidden" name="nisn" value="<?= e($row['nisn']) ?>">
                                     </form>
-                                <?php else: ?>
-                                    <span class="text-secondary">-</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -1401,28 +1530,86 @@ require dirname(__DIR__) . '/partials/header.php';
             </table>
         </div>
 
+        <?php foreach ($rowsMonitorPaginated as $row): ?>
+            <?php if (!$row['uploaded']) { continue; } ?>
+            <?php $modalId = 'modalNilaiMonitor' . md5((string) ($row['nisn'] ?? '') . '|' . (string) $monitorSemester); ?>
+            <?php $nilaiList = $monitorNilaiByNisn[(string) ($row['nisn'] ?? '')] ?? []; ?>
+            <div class="modal fade" id="<?= e($modalId) ?>" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Nilai Siswa: <?= e((string) ($row['nama'] ?? '-')) ?> (<?= e((string) ($row['nisn'] ?? '-')) ?>)</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="small text-secondary mb-2">
+                                Semester: <strong><?= e((string) $monitorSemester) ?></strong>
+                                <?php if ($monitorSemester !== 'UAM'): ?>
+                                    | Tahun Ajaran: <strong><?= e((string) $setting['tahun_ajaran']) ?></strong>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (count($nilaiList) > 0): ?>
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                        <tr>
+                                            <th style="width: 50px;">No</th>
+                                            <th>Mata Pelajaran</th>
+                                            <th style="width: 140px;">Nilai</th>
+                                            <?php if ($monitorSemester !== 'UAM'): ?>
+                                                <th style="width: 130px;">Finalized</th>
+                                            <?php endif; ?>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php $noNilai = 1; foreach ($nilaiList as $nilaiRow): ?>
+                                            <tr>
+                                                <td><?= e((string) $noNilai++) ?></td>
+                                                <td><?= e((string) ($nilaiRow['mapel'] ?? '-')) ?></td>
+                                                <td><?= e(number_format((float) ($nilaiRow['nilai'] ?? 0), 2, ',', '')) ?></td>
+                                                <?php if ($monitorSemester !== 'UAM'): ?>
+                                                    <td>
+                                                        <span class="badge <?= ((int) ($nilaiRow['is_finalized'] ?? 0) === 1) ? 'text-bg-success' : 'text-bg-secondary' ?>">
+                                                            <?= ((int) ($nilaiRow['is_finalized'] ?? 0) === 1) ? 'Ya' : 'Tidak' ?>
+                                                        </span>
+                                                    </td>
+                                                <?php endif; ?>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php else: ?>
+                                <p class="text-secondary text-center mb-0">Belum ada nilai untuk semester ini.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
         <?php if ($totalMonitorPages > 1): ?>
             <nav class="mt-3">
                 <ul class="pagination pagination-sm mb-0 justify-content-center">
                     <?php if ($monitorPage > 1): ?>
                         <li class="page-item">
-                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=1">Pertama</a>
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&kelas_filter_monitoring=<?= e($monitorKelas) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=1">Pertama</a>
                         </li>
                         <li class="page-item">
-                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) ($monitorPage - 1)) ?>">Sebelumnya</a>
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&kelas_filter_monitoring=<?= e($monitorKelas) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) ($monitorPage - 1)) ?>">Sebelumnya</a>
                         </li>
                     <?php endif; ?>
                     <?php for ($p = max(1, $monitorPage - 2); $p <= min($totalMonitorPages, $monitorPage + 2); $p++): ?>
                         <li class="page-item <?= $p === $monitorPage ? 'active' : '' ?>">
-                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) $p) ?>"><?= e((string) $p) ?></a>
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&kelas_filter_monitoring=<?= e($monitorKelas) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) $p) ?>"><?= e((string) $p) ?></a>
                         </li>
                     <?php endfor; ?>
                     <?php if ($monitorPage < $totalMonitorPages): ?>
                         <li class="page-item">
-                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) ($monitorPage + 1)) ?>">Selanjutnya</a>
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&kelas_filter_monitoring=<?= e($monitorKelas) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) ($monitorPage + 1)) ?>">Selanjutnya</a>
                         </li>
                         <li class="page-item">
-                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) $totalMonitorPages) ?>">Terakhir</a>
+                            <a class="page-link" href="index.php?page=data-nilai&semester_view=<?= e($monitorSemester) ?>&status_upload=<?= e($monitorStatus) ?>&kelas_filter_monitoring=<?= e($monitorKelas) ?>&search_monitoring=<?= e($monitorSearch) ?>&sort_by_monitoring=<?= e($monitorSortBy) ?>&sort_dir_monitoring=<?= e($monitorSortDir) ?>&per_page_monitoring=<?= e((string) $monitorPerPage) ?>&page_monitoring=<?= e((string) $totalMonitorPages) ?>">Terakhir</a>
                         </li>
                     <?php endif; ?>
                 </ul>
