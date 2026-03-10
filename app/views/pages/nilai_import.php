@@ -484,6 +484,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('index.php?page=data-nilai&semester_view=' . $semesterInt);
     }
 
+    if ($action === 'kosongkan_nilai_massal') {
+        $semesterTarget = strtoupper(trim((string) ($_POST['semester_target'] ?? '')));
+        $selectedNisnRaw = $_POST['selected_nisn'] ?? [];
+        $selectedNisn = [];
+        if (is_array($selectedNisnRaw)) {
+            foreach ($selectedNisnRaw as $nisnItem) {
+                $nisn = trim((string) $nisnItem);
+                if ($nisn !== '') {
+                    $selectedNisn[$nisn] = $nisn;
+                }
+            }
+            $selectedNisn = array_values($selectedNisn);
+        }
+
+        if (count($selectedNisn) === 0) {
+            set_flash('error', 'Pilih minimal satu siswa untuk proses kosongkan nilai.');
+            redirect('index.php?page=data-nilai&semester_view=' . urlencode($semesterTarget));
+        }
+
+        $placeholders = implode(',', array_fill(0, count($selectedNisn), '?'));
+
+        if ($semesterTarget === 'UAM') {
+            $sqlDeleteUam = "DELETE FROM nilai_uam WHERE nisn IN ({$placeholders})";
+            $stDeleteUam = db()->prepare($sqlDeleteUam);
+            $stDeleteUam->execute($selectedNisn);
+            $deleted = $stDeleteUam->rowCount();
+            set_flash('success', 'Kosongkan nilai massal UAM berhasil. Siswa diproses: ' . count($selectedNisn) . ', total data dihapus: ' . $deleted . '.');
+            redirect('index.php?page=data-nilai&semester_view=UAM');
+        }
+
+        $semesterInt = (int) $semesterTarget;
+        if ($semesterInt < 1 || $semesterInt > 6) {
+            set_flash('error', 'Semester target tidak valid untuk kosongkan nilai massal.');
+            redirect('index.php?page=data-nilai');
+        }
+
+        $params = array_merge($selectedNisn, [$semesterInt, (string) $setting['tahun_ajaran']]);
+
+        $sqlCountFinalized = "SELECT COUNT(*) c FROM nilai_rapor
+            WHERE nisn IN ({$placeholders}) AND semester = ? AND tahun_ajaran = ? AND is_finalized = 1";
+        $stCountFinalized = db()->prepare($sqlCountFinalized);
+        $stCountFinalized->execute($params);
+        $finalizedCount = (int) ($stCountFinalized->fetch()['c'] ?? 0);
+
+        $sqlDeleteRapor = "DELETE FROM nilai_rapor
+            WHERE nisn IN ({$placeholders}) AND semester = ? AND tahun_ajaran = ? AND is_finalized = 0";
+        $stDeleteRapor = db()->prepare($sqlDeleteRapor);
+        $stDeleteRapor->execute($params);
+        $deleted = $stDeleteRapor->rowCount();
+
+        if ($finalizedCount > 0) {
+            set_flash('warning', 'Kosongkan nilai massal semester ' . $semesterInt . ' selesai. Siswa diproses: ' . count($selectedNisn) . ', data dihapus: ' . $deleted . ', data finalized tidak dihapus: ' . $finalizedCount . '.');
+        } else {
+            set_flash('success', 'Kosongkan nilai massal semester ' . $semesterInt . ' berhasil. Siswa diproses: ' . count($selectedNisn) . ', total data dihapus: ' . $deleted . '.');
+        }
+
+        redirect('index.php?page=data-nilai&semester_view=' . $semesterInt);
+    }
+
     if ($action === 'confirm_import_rapor_rdm') {
         $preview = $_SESSION[$rdmPreviewSessionKey] ?? null;
         if (!is_array($preview) || empty($preview['entries']) || empty($preview['meta'])) {
@@ -1439,6 +1498,9 @@ require dirname(__DIR__) . '/partials/header.php';
         <div class="row mb-2 align-items-center small">
             <div class="col-md-6 text-secondary">Total: <?= e(number_format($totalMonitorRecords)) ?> siswa <?php if ($totalMonitorPages > 1): ?>(Halaman <?= e((string) $monitorPage) ?> dari <?= e((string) $totalMonitorPages) ?>)<?php endif; ?></div>
             <div class="col-md-6 text-end">
+                <button type="button" id="toggleBulkSelectBtn" class="btn btn-sm btn-outline-secondary me-2" title="Pilih Massal">
+                    <i class="bi bi-check2-square"></i>
+                </button>
                 <select id="perPageMonitorSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
                     <option value="20" <?= $monitorPerPage === 20 ? 'selected' : '' ?>>20 per halaman</option>
                     <option value="30" <?= $monitorPerPage === 30 ? 'selected' : '' ?>>30 per halaman</option>
@@ -1457,10 +1519,24 @@ require dirname(__DIR__) . '/partials/header.php';
             });
         </script>
 
-        <div class="table-wrap">
-            <table>
+        <form method="post" id="bulkKosongkanForm" data-confirm="Yakin ingin mengosongkan nilai untuk semua siswa yang dipilih pada semester ini?" data-confirm-title="Konfirmasi Kosongkan Nilai Massal">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="kosongkan_nilai_massal">
+            <input type="hidden" name="semester_target" value="<?= e($monitorSemester) ?>">
+
+            <div class="d-flex justify-content-end mb-2">
+                <button type="submit" id="bulkClearSelectedBtn" class="btn btn-sm btn-danger d-none" title="Kosongkan Nilai Terpilih">
+                    Kosongkan Nilai
+                </button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
                 <thead>
                 <tr>
+                    <th style="width: 44px;" class="text-center">
+                        <input type="checkbox" id="selectAllRows" class="form-check-input d-none" title="Pilih semua">
+                    </th>
                     <th style="width: 50px;">No</th>
                     <th><?php echo $getMonitorSortLink('nisn', 'NISN'); ?></th>
                     <th><?php echo $getMonitorSortLink('nis', 'NIS'); ?></th>
@@ -1476,11 +1552,14 @@ require dirname(__DIR__) . '/partials/header.php';
                 <tbody>
                 <?php if (count($rowsMonitorPaginated) === 0): ?>
                     <tr>
-                        <td colspan="10" class="text-center text-secondary">Tidak ada data untuk filter ini.</td>
+                        <td colspan="11" class="text-center text-secondary">Tidak ada data untuk filter ini.</td>
                     </tr>
                 <?php else: ?>
                     <?php $noCounter = $monitorOffset + 1; foreach ($rowsMonitorPaginated as $row): ?>
                         <tr>
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input row-select-checkbox d-none" name="selected_nisn[]" value="<?= e($row['nisn']) ?>" title="Pilih siswa">
+                            </td>
                             <td><?= e((string) $noCounter++) ?></td>
                             <td><?= e($row['nisn']) ?></td>
                             <td><?= e($row['nis']) ?></td>
@@ -1526,8 +1605,75 @@ require dirname(__DIR__) . '/partials/header.php';
                     <?php endforeach; ?>
                 <?php endif; ?>
                 </tbody>
-            </table>
-        </div>
+                </table>
+            </div>
+        </form>
+
+        <script>
+            (function () {
+                const toggleBtn = document.getElementById('toggleBulkSelectBtn');
+                const selectAll = document.getElementById('selectAllRows');
+                const rowChecks = document.querySelectorAll('.row-select-checkbox');
+                const bulkBtn = document.getElementById('bulkClearSelectedBtn');
+                if (!toggleBtn || !selectAll || rowChecks.length === 0 || !bulkBtn) {
+                    return;
+                }
+
+                let bulkMode = false;
+
+                function updateBulkButtonState() {
+                    let checkedCount = 0;
+                    rowChecks.forEach((cb) => {
+                        if (cb.checked) {
+                            checkedCount++;
+                        }
+                    });
+                    bulkBtn.classList.toggle('d-none', checkedCount === 0);
+                }
+
+                function resetSelections() {
+                    selectAll.checked = false;
+                    rowChecks.forEach((cb) => {
+                        cb.checked = false;
+                    });
+                    updateBulkButtonState();
+                }
+
+                toggleBtn.addEventListener('click', function () {
+                    bulkMode = !bulkMode;
+                    selectAll.classList.toggle('d-none', !bulkMode);
+                    rowChecks.forEach((cb) => {
+                        cb.classList.toggle('d-none', !bulkMode);
+                    });
+                    toggleBtn.classList.toggle('btn-outline-secondary', !bulkMode);
+                    toggleBtn.classList.toggle('btn-secondary', bulkMode);
+
+                    if (!bulkMode) {
+                        resetSelections();
+                    }
+                });
+
+                selectAll.addEventListener('change', function () {
+                    rowChecks.forEach((cb) => {
+                        cb.checked = selectAll.checked;
+                    });
+                    updateBulkButtonState();
+                });
+
+                rowChecks.forEach((cb) => {
+                    cb.addEventListener('change', function () {
+                        let allChecked = true;
+                        rowChecks.forEach((rowCb) => {
+                            if (!rowCb.checked) {
+                                allChecked = false;
+                            }
+                        });
+                        selectAll.checked = allChecked;
+                        updateBulkButtonState();
+                    });
+                });
+            })();
+        </script>
 
         <?php foreach ($rowsMonitorPaginated as $row): ?>
             <?php if (!$row['uploaded']) { continue; } ?>
