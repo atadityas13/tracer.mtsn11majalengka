@@ -1343,7 +1343,6 @@ require dirname(__DIR__) . '/partials/header.php';
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#<?= e($modalId) ?>">Lihat Nilai</button>
                             </td>
-                        </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -1500,7 +1499,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                 <?php if ($row['uploaded']): ?>
                                     <div class="d-inline-flex gap-1">
                                         <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#<?= e($modalId) ?>" title="Lihat Nilai">
-                                            <i class="bi bi-card-list"></i> Lihat Nilai
+                                            <i class="bi bi-card-list"></i>
                                         </button>
                                         <form method="post" class="d-inline" data-confirm="Yakin ingin mengosongkan semua nilai siswa ini pada semester terpilih?" data-confirm-title="Konfirmasi Kosongkan Nilai">
                                             <?= csrf_input() ?>
@@ -1508,13 +1507,13 @@ require dirname(__DIR__) . '/partials/header.php';
                                             <input type="hidden" name="nisn" value="<?= e($row['nisn']) ?>">
                                             <input type="hidden" name="semester_target" value="<?= e($monitorSemester) ?>">
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Kosongkan Nilai">
-                                                <i class="bi bi-eraser"></i> Kosongkan Nilai
+                                                <i class="bi bi-eraser"></i>
                                             </button>
                                         </form>
                                     </div>
                                 <?php else: ?>
                                     <button type="button" class="btn btn-sm btn-outline-warning" onclick="if(confirm('Nonaktifkan siswa <?= e($row['nama']) ?>? Status akan diubah menjadi Tidak Melanjutkan.')) document.getElementById('formNonaktif<?= e($row['nisn']) ?>').submit();" title="Nonaktifkan">
-                                        <i class="bi bi-x-circle"></i> Nonaktifkan
+                                        <i class="bi bi-x-circle"></i>
                                     </button>
                                     <form id="formNonaktif<?= e($row['nisn']) ?>" method="post" class="d-none">
                                         <?= csrf_input() ?>
@@ -1534,6 +1533,23 @@ require dirname(__DIR__) . '/partials/header.php';
             <?php if (!$row['uploaded']) { continue; } ?>
             <?php $modalId = 'modalNilaiMonitor' . md5((string) ($row['nisn'] ?? '') . '|' . (string) $monitorSemester); ?>
             <?php $nilaiList = $monitorNilaiByNisn[(string) ($row['nisn'] ?? '')] ?? []; ?>
+            <?php
+                $totalNilaiSiswa = 0.0;
+                $jumlahMapelSiswa = count($nilaiList);
+                $finalizedYa = 0;
+                $finalizedBelum = 0;
+                foreach ($nilaiList as $nilaiRowCalc) {
+                    $totalNilaiSiswa += (float) ($nilaiRowCalc['nilai'] ?? 0);
+                    if ($monitorSemester !== 'UAM') {
+                        if ((int) ($nilaiRowCalc['is_finalized'] ?? 0) === 1) {
+                            $finalizedYa++;
+                        } else {
+                            $finalizedBelum++;
+                        }
+                    }
+                }
+                $rataRataNilaiSiswa = $jumlahMapelSiswa > 0 ? ($totalNilaiSiswa / $jumlahMapelSiswa) : 0.0;
+            ?>
             <div class="modal fade" id="<?= e($modalId) ?>" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content border-0 shadow">
@@ -1548,6 +1564,12 @@ require dirname(__DIR__) . '/partials/header.php';
                                     | Tahun Ajaran: <strong><?= e((string) $setting['tahun_ajaran']) ?></strong>
                                 <?php endif; ?>
                             </div>
+                            <?php if ($monitorSemester !== 'UAM'): ?>
+                                <div class="small text-secondary mb-2">
+                                    Status Finalisasi: <strong>Sudah <?= e((string) $finalizedYa) ?></strong> mapel,
+                                    <strong>Belum <?= e((string) $finalizedBelum) ?></strong> mapel
+                                </div>
+                            <?php endif; ?>
                             <?php if (count($nilaiList) > 0): ?>
                                 <div class="table-wrap">
                                     <table>
@@ -1556,9 +1578,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                             <th style="width: 50px;">No</th>
                                             <th>Mata Pelajaran</th>
                                             <th style="width: 140px;">Nilai</th>
-                                            <?php if ($monitorSemester !== 'UAM'): ?>
-                                                <th style="width: 130px;">Finalized</th>
-                                            <?php endif; ?>
+                                            <th>Terbilang</th>
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -1567,15 +1587,19 @@ require dirname(__DIR__) . '/partials/header.php';
                                                 <td><?= e((string) $noNilai++) ?></td>
                                                 <td><?= e((string) ($nilaiRow['mapel'] ?? '-')) ?></td>
                                                 <td><?= e(number_format((float) ($nilaiRow['nilai'] ?? 0), 2, ',', '')) ?></td>
-                                                <?php if ($monitorSemester !== 'UAM'): ?>
-                                                    <td>
-                                                        <span class="badge <?= ((int) ($nilaiRow['is_finalized'] ?? 0) === 1) ? 'text-bg-success' : 'text-bg-secondary' ?>">
-                                                            <?= ((int) ($nilaiRow['is_finalized'] ?? 0) === 1) ? 'Ya' : 'Tidak' ?>
-                                                        </span>
-                                                    </td>
-                                                <?php endif; ?>
+                                                <td><?= e(ucwords(terbilang_nilai((float) ($nilaiRow['nilai'] ?? 0)))) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
+                                        <tr class="table-secondary fw-semibold">
+                                            <td colspan="2">Jumlah Nilai</td>
+                                            <td><?= e(number_format($totalNilaiSiswa, 2, ',', '')) ?></td>
+                                            <td><?= e(ucwords(terbilang_nilai($totalNilaiSiswa))) ?></td>
+                                        </tr>
+                                        <tr class="table-secondary fw-semibold">
+                                            <td colspan="2">Rata-Rata Nilai</td>
+                                            <td><?= e(number_format($rataRataNilaiSiswa, 4, ',', '')) ?></td>
+                                            <td><?= e(ucwords(terbilang_nilai($rataRataNilaiSiswa))) ?></td>
+                                        </tr>
                                         </tbody>
                                     </table>
                                 </div>
