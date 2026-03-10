@@ -1086,41 +1086,6 @@ $isLoggedIn = current_user() !== null;
                                         </div>
                                     </div>
 
-                                    <?php foreach ($homePreviewStudentList as $studentPreview): ?>
-                                        <?php $modalId = 'modalHomePreviewNilai' . md5((string) ($studentPreview['nisn'] ?? '')); ?>
-                                        <div class="modal fade" id="<?= e($modalId) ?>" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                                                <div class="modal-content border-0 shadow">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Detail Nilai - <?= e((string) (($studentPreview['nama'] ?? '') !== '' ? $studentPreview['nama'] : '-')) ?> (<?= e((string) ($studentPreview['nisn'] ?? '-')) ?>)</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div class="table-wrap">
-                                                            <table class="table table-sm align-middle mb-0">
-                                                                <thead>
-                                                                <tr>
-                                                                    <th style="width: 50px;">No</th>
-                                                                    <th>Mapel</th>
-                                                                    <th>Nilai Baru</th>
-                                                                </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                <?php $detailNo = 1; foreach (($studentPreview['details'] ?? []) as $detail): ?>
-                                                                    <tr>
-                                                                        <td><?= e((string) $detailNo++) ?></td>
-                                                                        <td><?= e((string) ($detail['mapel'] ?? '-')) ?></td>
-                                                                        <td><?= e((string) number_format((float) ($detail['nilai_baru'] ?? 0), 2)) ?></td>
-                                                                    </tr>
-                                                                <?php endforeach; ?>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
                                 <?php endif; ?>
 
                                 <!-- Admin Upload Token (if required) -->
@@ -1167,6 +1132,44 @@ $isLoggedIn = current_user() !== null;
         <?php endif; ?>
 
     </main>
+
+    <?php if ($homePreview && count($homePreviewStudentList) > 0): ?>
+        <?php foreach ($homePreviewStudentList as $studentPreview): ?>
+            <?php $modalId = 'modalHomePreviewNilai' . md5((string) ($studentPreview['nisn'] ?? '')); ?>
+            <div class="modal fade" id="<?= e($modalId) ?>" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Detail Nilai - <?= e((string) (($studentPreview['nama'] ?? '') !== '' ? $studentPreview['nama'] : '-')) ?> (<?= e((string) ($studentPreview['nisn'] ?? '-')) ?>)</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="table-wrap">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th style="width: 50px;">No</th>
+                                        <th>Mapel</th>
+                                        <th>Nilai Baru</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php $detailNo = 1; foreach (($studentPreview['details'] ?? []) as $detail): ?>
+                                        <tr>
+                                            <td><?= e((string) $detailNo++) ?></td>
+                                            <td><?= e((string) ($detail['mapel'] ?? '-')) ?></td>
+                                            <td><?= e((string) number_format((float) ($detail['nilai_baru'] ?? 0), 2)) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
     <div class="modal fade" id="aboutTracerModal" tabindex="-1" aria-labelledby="aboutTracerModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
