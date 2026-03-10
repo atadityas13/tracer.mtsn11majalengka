@@ -1236,8 +1236,8 @@ $isLoggedIn = current_user() !== null;
                                         </div>
                                     </div>
                                     <div class="col-12">
-                                        <label for="admin_upload_token" class="form-label fw-semibold">Token Konfirmas</label>
-                                        <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" placeholder="Masukkan token admin (huruf dan angka)" maxlength="20" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,20)" required>
+                                        <label for="admin_upload_token" class="form-label fw-semibold">Token Konfirmasi</label>
+                                        <input type="text" class="form-control" id="admin_upload_token" name="admin_upload_token" placeholder="Masukkan token" maxlength="20" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,20)" required>
                                         <div class="form-text mt-2">Token ini digunakan untuk memastikan bahwa hanya guru yang berwenang yang dapat mengirim nilai. Jika Anda belum memiliki token, silakan hubungi admin/kurikulum untuk mendapatkannya.</div>
                                     </div>
                                 <?php else: ?>
