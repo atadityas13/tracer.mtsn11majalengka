@@ -1313,7 +1313,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                         <?php endforeach; ?>
                                                         <tr class="table-secondary fw-bold">
                                                             <td>Rata-Rata</td>
-                                                            <td class="text-center"><?= e((string)round($rataRata)) ?></td>
+                                                            <td class="text-center"><?= e(number_format($rataRata, 2, ',', '')) ?></td>
                                                             <td class="text-center"><?= ucwords(terbilang_nilai($rataRata)) ?></td>
                                                         </tr>
                                     </tbody>
@@ -1365,7 +1365,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                         <?php endforeach; ?>
                                         <tr class="table-secondary fw-bold">
                                             <td>Rata-Rata</td>
-                                            <td class="text-center"><?= e((string)round($rataRataUam)) ?></td>
+                                            <td class="text-center"><?= e(number_format($rataRataUam, 2, ',', '')) ?></td>
                                             <td class="text-center"><?= ucwords(terbilang_nilai($rataRataUam)) ?></td>
                                         </tr>
                                     </tbody>
@@ -1442,7 +1442,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                         <tr class="table-secondary fw-bold">
                                             <td>Rata-Rata Ijazah</td>
                                             <td colspan="2"></td>
-                                            <td class="text-center"><?= e((string) round($rataIjazahAkhir)) ?></td>
+                                            <td class="text-center"><?= e(number_format($rataIjazahAkhir, 2, ',', '')) ?></td>
                                             <td class="text-center"><?= e(ucwords(terbilang_nilai($rataIjazahAkhir))) ?></td>
                                         </tr>
                                     </tbody>
