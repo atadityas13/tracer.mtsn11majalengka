@@ -245,23 +245,46 @@ if (!function_exists('terbilang_nilai')) {
 if (!function_exists('terbilang_bulat')) {
     function terbilang_bulat(int $angka): string
     {
-        $angka = abs($angka);
         $huruf = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
 
-        if ($angka < 12) {
-            return ' ' . $huruf[$angka];
-        }
-        if ($angka < 20) {
-            return terbilang_bulat($angka - 10) . ' belas';
-        }
-        if ($angka < 100) {
-            return terbilang_bulat(intdiv($angka, 10)) . ' puluh' . terbilang_bulat($angka % 10);
-        }
-        if ($angka < 200) {
-            return ' seratus' . terbilang_bulat($angka - 100);
+        $toWords = static function (int $nilai) use (&$toWords, $huruf): string {
+            if ($nilai < 12) {
+                return ' ' . $huruf[$nilai];
+            }
+            if ($nilai < 20) {
+                return $toWords($nilai - 10) . ' belas';
+            }
+            if ($nilai < 100) {
+                return $toWords(intdiv($nilai, 10)) . ' puluh' . $toWords($nilai % 10);
+            }
+            if ($nilai < 200) {
+                return ' seratus' . $toWords($nilai - 100);
+            }
+            if ($nilai < 1000) {
+                return $toWords(intdiv($nilai, 100)) . ' ratus' . $toWords($nilai % 100);
+            }
+            if ($nilai < 2000) {
+                return ' seribu' . $toWords($nilai - 1000);
+            }
+            if ($nilai < 1000000) {
+                return $toWords(intdiv($nilai, 1000)) . ' ribu' . $toWords($nilai % 1000);
+            }
+            if ($nilai < 1000000000) {
+                return $toWords(intdiv($nilai, 1000000)) . ' juta' . $toWords($nilai % 1000000);
+            }
+            if ($nilai < 1000000000000) {
+                return $toWords(intdiv($nilai, 1000000000)) . ' miliar' . $toWords($nilai % 1000000000);
+            }
+
+            return $toWords(intdiv($nilai, 1000000000000)) . ' triliun' . $toWords($nilai % 1000000000000);
+        };
+
+        $angka = abs($angka);
+        if ($angka === 0) {
+            return ' nol';
         }
 
-        return (string) $angka;
+        return $toWords($angka);
     }
 }
 
