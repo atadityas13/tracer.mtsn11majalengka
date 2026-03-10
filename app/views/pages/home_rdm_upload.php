@@ -800,12 +800,13 @@ if ($homePreview) {
     $siswaByNisn = [];
     if (count($nisnListPreview) > 0) {
         $placeholders = implode(',', array_fill(0, count($nisnListPreview), '?'));
-        $sql = "SELECT nisn, nama, kelas FROM siswa WHERE nisn IN ({$placeholders})";
+        $sql = "SELECT nisn, nis, nama, kelas FROM siswa WHERE nisn IN ({$placeholders})";
         $stSiswaPreview = db()->prepare($sql);
         $stSiswaPreview->execute(array_values($nisnListPreview));
 
         foreach ($stSiswaPreview->fetchAll() as $siswaRow) {
             $siswaByNisn[(string) ($siswaRow['nisn'] ?? '')] = [
+                'nis' => (string) ($siswaRow['nis'] ?? ''),
                 'nama' => (string) ($siswaRow['nama'] ?? ''),
                 'kelas' => (string) ($siswaRow['kelas'] ?? ''),
             ];
@@ -836,9 +837,10 @@ if ($homePreview) {
         }
 
         if (!isset($previewByStudent[$nisn])) {
-            $studentMeta = $siswaByNisn[$nisn] ?? ['nama' => '', 'kelas' => ''];
+            $studentMeta = $siswaByNisn[$nisn] ?? ['nis' => '', 'nama' => '', 'kelas' => ''];
             $previewByStudent[$nisn] = [
                 'nisn' => $nisn,
+                'nis' => (string) ($studentMeta['nis'] ?? ''),
                 'nama' => (string) ($studentMeta['nama'] ?? ''),
                 'kelas' => (string) ($studentMeta['kelas'] ?? ''),
                 'semester' => (int) ($entry['semester'] ?? 0),
@@ -1188,29 +1190,34 @@ $isLoggedIn = current_user() !== null;
                 <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content border-0 shadow">
                         <div class="modal-header">
-                            <h5 class="modal-title">Detail Nilai - <?= e((string) (($studentPreview['nama'] ?? '') !== '' ? $studentPreview['nama'] : '-')) ?> (<?= e((string) ($studentPreview['nisn'] ?? '-')) ?>)</h5>
+                            <h5 class="modal-title">Detail Nilai Upload</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
+                            <div class="row g-2 mb-3 small">
+                                <div class="col-md-6"><strong>Nama:</strong> <?= e((string) (($studentPreview['nama'] ?? '') !== '' ? $studentPreview['nama'] : '-')) ?></div>
+                                <div class="col-md-3"><strong>NIS:</strong> <?= e((string) (($studentPreview['nis'] ?? '') !== '' ? $studentPreview['nis'] : '-')) ?></div>
+                                <div class="col-md-3"><strong>NISN:</strong> <?= e((string) ($studentPreview['nisn'] ?? '-')) ?></div>
+                                <div class="col-md-6"><strong>Kelas:</strong> <?= e((string) (($studentPreview['kelas'] ?? '') !== '' ? $studentPreview['kelas'] : '-')) ?></div>
+                                <div class="col-md-6"><strong>Semester:</strong> <?= e((string) ((int) ($studentPreview['semester'] ?? 0) > 0 ? (int) $studentPreview['semester'] : '-')) ?></div>
+                            </div>
                             <div class="table-wrap">
                                 <table class="table table-sm align-middle mb-0">
                                     <thead>
                                     <tr>
                                         <th style="width: 50px;">No</th>
-                                        <th style="min-width: 180px;">Nama Siswa</th>
-                                        <?php foreach (($studentPreview['details'] ?? []) as $detail): ?>
-                                            <th><?= e((string) ($detail['mapel'] ?? '-')) ?></th>
-                                        <?php endforeach; ?>
+                                        <th>Nama Mapel</th>
+                                        <th style="width: 100px;">Nilai</th>
                                     </tr>
                                     </thead>
                                     <tbody>
+                                    <?php $detailNo = 1; foreach (($studentPreview['details'] ?? []) as $detail): ?>
                                         <tr>
-                                            <td>1</td>
-                                            <td><?= e((string) (($studentPreview['nama'] ?? '') !== '' ? $studentPreview['nama'] : '-')) ?></td>
-                                            <?php foreach (($studentPreview['details'] ?? []) as $detail): ?>
-                                                <td><?= e((string) number_format((float) ($detail['nilai_baru'] ?? 0), 2)) ?></td>
-                                            <?php endforeach; ?>
+                                            <td><?= e((string) $detailNo++) ?></td>
+                                            <td><?= e((string) ($detail['mapel'] ?? '-')) ?></td>
+                                            <td><?= e((string) number_format((float) ($detail['nilai_baru'] ?? 0), 2)) ?></td>
                                         </tr>
+                                    <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
