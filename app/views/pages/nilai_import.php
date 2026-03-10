@@ -1549,6 +1549,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     }
                 }
                 $rataRataNilaiSiswa = $jumlahMapelSiswa > 0 ? ($totalNilaiSiswa / $jumlahMapelSiswa) : 0.0;
+                $statusFinalisasiSiswa = ($monitorSemester !== 'UAM' && $jumlahMapelSiswa > 0 && $finalizedBelum === 0) ? 'Sudah' : 'Belum';
             ?>
             <div class="modal fade" id="<?= e($modalId) ?>" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -1566,8 +1567,7 @@ require dirname(__DIR__) . '/partials/header.php';
                             </div>
                             <?php if ($monitorSemester !== 'UAM'): ?>
                                 <div class="small text-secondary mb-2">
-                                    Status Finalisasi: <strong>Sudah <?= e((string) $finalizedYa) ?></strong> mapel,
-                                    <strong>Belum <?= e((string) $finalizedBelum) ?></strong> mapel
+                                    Status Finalisasi: <strong><?= e($statusFinalisasiSiswa) ?></strong>
                                 </div>
                             <?php endif; ?>
                             <?php if (count($nilaiList) > 0): ?>
@@ -1586,18 +1586,18 @@ require dirname(__DIR__) . '/partials/header.php';
                                             <tr>
                                                 <td><?= e((string) $noNilai++) ?></td>
                                                 <td><?= e((string) ($nilaiRow['mapel'] ?? '-')) ?></td>
-                                                <td><?= e(number_format((float) ($nilaiRow['nilai'] ?? 0), 2, ',', '')) ?></td>
-                                                <td><?= e(ucwords(terbilang_nilai((float) ($nilaiRow['nilai'] ?? 0)))) ?></td>
+                                                <td><?= e((string) round((float) ($nilaiRow['nilai'] ?? 0))) ?></td>
+                                                <td><?= e(ucwords(terbilang_bulat((int) round((float) ($nilaiRow['nilai'] ?? 0))))) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                         <tr class="table-secondary fw-semibold">
                                             <td colspan="2">Jumlah Nilai</td>
-                                            <td><?= e(number_format($totalNilaiSiswa, 2, ',', '')) ?></td>
-                                            <td><?= e(ucwords(terbilang_nilai($totalNilaiSiswa))) ?></td>
+                                            <td><?= e((string) round($totalNilaiSiswa)) ?></td>
+                                            <td><?= e(ucwords(terbilang_bulat((int) round($totalNilaiSiswa)))) ?></td>
                                         </tr>
                                         <tr class="table-secondary fw-semibold">
                                             <td colspan="2">Rata-Rata Nilai</td>
-                                            <td><?= e(number_format($rataRataNilaiSiswa, 4, ',', '')) ?></td>
+                                            <td><?= e(number_format($rataRataNilaiSiswa, 2, ',', '')) ?></td>
                                             <td><?= e(ucwords(terbilang_nilai($rataRataNilaiSiswa))) ?></td>
                                         </tr>
                                         </tbody>
