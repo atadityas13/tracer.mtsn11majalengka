@@ -1312,6 +1312,11 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                             </tr>
                                         <?php endforeach; ?>
                                                         <tr class="table-secondary fw-bold">
+                                                            <td>Jumlah Nilai</td>
+                                                            <td class="text-center"><?= e((string) round($totalNilai)) ?></td>
+                                                            <td class="text-center"><?= ucwords(terbilang_bulat((int) round($totalNilai))) ?></td>
+                                                        </tr>
+                                                        <tr class="table-secondary fw-bold">
                                                             <td>Rata-Rata</td>
                                                             <td class="text-center"><?= e(number_format($rataRata, 2, ',', '')) ?></td>
                                                             <td class="text-center"><?= ucwords(terbilang_nilai($rataRata)) ?></td>
@@ -1363,6 +1368,11 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                                 <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
+                                        <tr class="table-secondary fw-bold">
+                                            <td>Jumlah Nilai</td>
+                                            <td class="text-center"><?= e((string) round($totalNilaiUam)) ?></td>
+                                            <td class="text-center"><?= ucwords(terbilang_bulat((int) round($totalNilaiUam))) ?></td>
+                                        </tr>
                                         <tr class="table-secondary fw-bold">
                                             <td>Rata-Rata</td>
                                             <td class="text-center"><?= e(number_format($rataRataUam, 2, ',', '')) ?></td>
