@@ -794,6 +794,7 @@ if ($homePreview) {
         if ($mapelId > 0) {
             $mapelIdsPreview[$mapelId] = $mapelId;
         }
+
     }
 
     $siswaByNisn = [];
@@ -850,6 +851,53 @@ if ($homePreview) {
             'mapel' => (string) ($mapelNameById[$mapelId] ?? ('Mapel #' . $mapelId)),
             'nilai_baru' => (float) ($entry['nilai_baru'] ?? 0),
         ];
+    }
+
+    $preferredMapelOrder = [
+        'AL QUR AN HADIS',
+        'AKIDAH AKHLAK',
+        'FIKIH',
+        'SKI',
+        'BAHASA ARAB',
+        'PPKN',
+        'BAHASA INDONESIA',
+        'MATEMATIKA',
+        'IPA',
+        'IPS',
+        'BAHASA INGGRIS',
+        'PENJASORKES',
+        'PRAKARYA INFORMATIKA',
+        'SENI BUDAYA',
+        'BAHASA DAERAH',
+    ];
+    $preferredRank = [];
+    foreach ($preferredMapelOrder as $index => $mapelName) {
+        $preferredRank[rdm_normalize_header($mapelName)] = $index;
+    }
+
+    foreach ($previewByStudent as $nisnKey => $studentPreview) {
+        if (!is_array($studentPreview['details'] ?? null)) {
+            continue;
+        }
+
+        usort($studentPreview['details'], static function (array $a, array $b) use ($preferredRank): int {
+            $mapelA = (string) ($a['mapel'] ?? '');
+            $mapelB = (string) ($b['mapel'] ?? '');
+
+            $keyA = rdm_normalize_header($mapelA);
+            $keyB = rdm_normalize_header($mapelB);
+
+            $rankA = $preferredRank[$keyA] ?? 999;
+            $rankB = $preferredRank[$keyB] ?? 999;
+
+            if ($rankA === $rankB) {
+                return strcmp(strtoupper($mapelA), strtoupper($mapelB));
+            }
+
+            return $rankA <=> $rankB;
+        });
+
+        $previewByStudent[$nisnKey] = $studentPreview;
     }
 
     $homePreviewStudentList = array_values($previewByStudent);
@@ -1149,18 +1197,20 @@ $isLoggedIn = current_user() !== null;
                                     <thead>
                                     <tr>
                                         <th style="width: 50px;">No</th>
-                                        <th>Mapel</th>
-                                        <th>Nilai Baru</th>
+                                        <th style="min-width: 180px;">Nama Siswa</th>
+                                        <?php foreach (($studentPreview['details'] ?? []) as $detail): ?>
+                                            <th><?= e((string) ($detail['mapel'] ?? '-')) ?></th>
+                                        <?php endforeach; ?>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <?php $detailNo = 1; foreach (($studentPreview['details'] ?? []) as $detail): ?>
                                         <tr>
-                                            <td><?= e((string) $detailNo++) ?></td>
-                                            <td><?= e((string) ($detail['mapel'] ?? '-')) ?></td>
-                                            <td><?= e((string) number_format((float) ($detail['nilai_baru'] ?? 0), 2)) ?></td>
+                                            <td>1</td>
+                                            <td><?= e((string) (($studentPreview['nama'] ?? '') !== '' ? $studentPreview['nama'] : '-')) ?></td>
+                                            <?php foreach (($studentPreview['details'] ?? []) as $detail): ?>
+                                                <td><?= e((string) number_format((float) ($detail['nilai_baru'] ?? 0), 2)) ?></td>
+                                            <?php endforeach; ?>
                                         </tr>
-                                    <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
