@@ -3,11 +3,14 @@
  * ========================================================
  * TRACER MTSN 11 MAJALENGKA
  * ========================================================
- * * Sistem Manajemen Data Nilai Siswa
+ * 
+ * Sistem Manajemen Data Nilai Siswa
  * MTsN 11 Majalengka, Kabupaten Majalengka, Jawa Barat
- * * File: Data Siswa Page
+ * 
+ * File: Data Siswa Page
  * Deskripsi: Halaman manajemen data siswa - CRUD, import Excel, dan modal nilai
- * * @package    TRACER-MTSN11
+ * 
+ * @package    TRACER-MTSN11
  * @author     MTsN 11 Majalengka Development Team
  * @copyright  2026 MTsN 11 Majalengka. All rights reserved.
  * @license    Proprietary License
@@ -15,22 +18,26 @@
  * @since      2026-01-01
  * @created    2026-03-06
  * @modified   2026-03-06
- * * Features:
+ * 
+ * Features:
  * - CRUD operations (Create, Read, Update, Delete)
  * - Import dari file Excel (.xlsx)
  * - Search realtime (Nama/NIS/NISN)
  * - Pagination (20/30/50/100/semua)
  * - Sorting clickable headers (Nama/Semester/Status)
  * - Modal view nilai per siswa (Rapor + UAM)
- * * DISCLAIMER:
+ * 
+ * DISCLAIMER:
  * Software ini dikembangkan khusus untuk MTsN 11 Majalengka.
  * Dilarang keras menyalin, memodifikasi, atau mendistribusikan
  * tanpa izin tertulis dari MTsN 11 Majalengka.
- * * CONTACT:
+ * 
+ * CONTACT:
  * Website: https://mtsn11majalengka.sch.id
  * Email: mtsn11majalengka@gmail.com
  * Phone: (0233) 8319182
- * * ========================================================
+ * 
+ * ========================================================
  */
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -1172,6 +1179,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
 </div>
 
 <?php foreach ($siswa as $s): ?>
+<!-- Modal Detail Siswa -->
 <div class="modal fade" id="modalDetailSiswa<?= e($s['nisn']) ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
@@ -1235,6 +1243,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
     </div>
 </div>
 
+<!-- Modal Nilai Siswa -->
 <div class="modal fade" id="modalNilaiSiswa<?= e($s['nisn']) ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
@@ -1268,10 +1277,10 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                 </ul>
                 <div class="tab-content" id="tabContent<?= e($s['nisn']) ?>">
                     <?php for ($sem = 1; $sem <= 5; $sem++): 
-                        // Hapus filter tahun_ajaran agar semua nilai sesuai semester dan NISN muncul
-                        $stNilai = db()->prepare('SELECT nr.id, nr.nilai_angka, nr.mapel_id, nr.tahun_ajaran, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem ORDER BY m.id');
-                        $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem]);
-                        $nilaiRapor = $stNilai->fetchAll();
+                    // Hapus filter tahun_ajaran agar semua nilai sesuai semester dan NISN muncul
+                    $stNilai = db()->prepare('SELECT nr.id, nr.nilai_angka, nr.mapel_id, nr.tahun_ajaran, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem ORDER BY m.id');
+                    $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem]);
+                    $nilaiRapor = $stNilai->fetchAll();
                         
                         // Hitung rata-rata
                         $totalNilai = 0;
@@ -1385,12 +1394,12 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                     <?php
                         $stIjazah = db()->prepare('SELECT m.id AS mapel_id, m.nama_mapel,
                             (SELECT AVG(nr.nilai_angka)
-                             FROM nilai_rapor nr
-                             WHERE nr.nisn=:nisn_rapor AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 5) AS rata_rapor,
+                            FROM nilai_rapor nr
+                            WHERE nr.nisn=:nisn_rapor AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 5) AS rata_rapor,
                             (SELECT nu.nilai_angka
-                             FROM nilai_uam nu
-                             WHERE nu.nisn=:nisn_uam AND nu.mapel_id=m.id
-                             LIMIT 1) AS nilai_uam
+                            FROM nilai_uam nu
+                            WHERE nu.nisn=:nisn_uam AND nu.mapel_id=m.id
+                            LIMIT 1) AS nilai_uam
                             FROM mapel m
                             ORDER BY m.id');
                         $stIjazah->execute([
