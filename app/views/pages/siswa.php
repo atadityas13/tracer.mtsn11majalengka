@@ -1273,18 +1273,12 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                     </li>
                 </ul>
                 <div class="tab-content" id="tabContent<?= e($s['nisn']) ?>">
-                    <?php
-                    // Ambil semua semester dan tahun ajaran yang sudah terupload untuk siswa ini
-                    $stSemTa = db()->prepare('SELECT DISTINCT semester, tahun_ajaran FROM nilai_rapor WHERE nisn=:nisn ORDER BY tahun_ajaran ASC, semester ASC');
-                    $stSemTa->execute(['nisn' => $s['nisn']]);
-                    $semTaList = $stSemTa->fetchAll();
-                    $activeTab = true;
-                    foreach ($semTaList as $row) {
-                        $sem = (int)$row['semester'];
-                        $ta = $row['tahun_ajaran'];
+                    <?php for ($sem = 1; $sem <= 5; $sem++): 
                         $stNilai = db()->prepare('SELECT nr.id, nr.nilai_angka, nr.mapel_id, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem AND nr.tahun_ajaran=:ta ORDER BY m.id');
-                        $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem, 'ta' => $ta]);
+                        $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem, 'ta' => $setting['tahun_ajaran']]);
                         $nilaiRapor = $stNilai->fetchAll();
+                        
+                        // Hitung rata-rata
                         $totalNilai = 0;
                         $jumlahMapel = count($nilaiRapor);
                         foreach ($nilaiRapor as $n) {
@@ -1292,8 +1286,8 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                         }
                         $rataRata = $jumlahMapel > 0 ? $totalNilai / $jumlahMapel : 0;
                     ?>
-                    <div class="tab-pane fade <?= $activeTab ? 'show active' : '' ?>" id="sem<?= $sem ?>-<?= e($s['nisn']) ?>-<?= e($ta) ?>">
-                        <h6 class="mb-3">Semester <?= $sem ?> - TA <?= e($ta) ?></h6>
+                    <div class="tab-pane fade <?= $sem === 1 ? 'show active' : '' ?>" id="sem<?= $sem ?>-<?= e($s['nisn']) ?>">
+                        <h6 class="mb-3">Semester <?= $sem ?> - TA <?= e($setting['tahun_ajaran']) ?></h6>
                         <?php if (count($nilaiRapor) > 0): ?>
                             <div class="table-wrap">
                                 <table class="table table-sm table-bordered">
@@ -1312,21 +1306,21 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
                                                 <td class="text-center">
-                                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e((int)round($n['nilai_angka'])) ?>" id="nilai_<?= e($n['id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="<?= $sem ?>" data-tahun-ajaran="<?= e($ta) ?>">
+                                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e((int)round($n['nilai_angka'])) ?>" id="nilai_<?= e($n['id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="<?= $sem ?>">
                                                 </td>
                                                 <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
-                                        <tr class="table-secondary fw-bold">
-                                            <td>Jumlah Nilai</td>
-                                            <td class="text-center"><?= e((string) round($totalNilai)) ?></td>
-                                            <td class="text-center"><?= ucwords(terbilang_bulat((int) round($totalNilai))) ?></td>
-                                        </tr>
-                                        <tr class="table-secondary fw-bold">
-                                            <td>Rata-Rata</td>
-                                            <td class="text-center"><?= e(number_format($rataRata, 2, ',', '')) ?></td>
-                                            <td class="text-center"><?= ucwords(terbilang_nilai($rataRata)) ?></td>
-                                        </tr>
+                                                        <tr class="table-secondary fw-bold">
+                                                            <td>Jumlah Nilai</td>
+                                                            <td class="text-center"><?= e((string) round($totalNilai)) ?></td>
+                                                            <td class="text-center"><?= ucwords(terbilang_bulat((int) round($totalNilai))) ?></td>
+                                                        </tr>
+                                                        <tr class="table-secondary fw-bold">
+                                                            <td>Rata-Rata</td>
+                                                            <td class="text-center"><?= e(number_format($rataRata, 2, ',', '')) ?></td>
+                                                            <td class="text-center"><?= ucwords(terbilang_nilai($rataRata)) ?></td>
+                                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -1334,7 +1328,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
                             <p class="text-secondary text-center">Belum ada nilai untuk semester ini.</p>
                         <?php endif; ?>
                     </div>
-                    <?php $activeTab = false; } ?>
+                    <?php endfor; ?>
                     
                     <?php 
                         $stUam = db()->prepare('SELECT nu.id, nu.nilai_angka, nu.mapel_id, m.nama_mapel FROM nilai_uam nu JOIN mapel m ON nu.mapel_id=m.id WHERE nu.nisn=:nisn ORDER BY m.id');
