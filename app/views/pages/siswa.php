@@ -1257,24 +1257,36 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                    <?php 
+                        // Cek status isi per semester
+                        $hasGradeSem = [];
+                        for ($sem=1; $sem<=5; $sem++) {
+                            $stCek = db()->prepare('SELECT 1 FROM nilai_rapor WHERE nisn=:nisn AND semester=:sem LIMIT 1');
+                            $stCek->execute(['nisn' => $s['nisn'], 'sem' => $sem]);
+                            $hasGradeSem[$sem] = (bool) $stCek->fetch();
+                        }
+                        $stCekUam = db()->prepare('SELECT 1 FROM nilai_uam WHERE nisn=:nisn LIMIT 1');
+                        $stCekUam->execute(['nisn' => $s['nisn']]);
+                        $hasGradeUam = (bool) $stCekUam->fetch();
+                    ?>
                 <ul class="nav nav-tabs mb-3" id="tabNilai<?= e($s['nisn']) ?>" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="tab-sem1-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem1-<?= e($s['nisn']) ?>" type="button">Semester 1</button>
+                        <button class="nav-link active" id="tab-sem1-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem1-<?= e($s['nisn']) ?>" type="button">Semester 1 <?= !$hasGradeSem[1] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-sem2-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem2-<?= e($s['nisn']) ?>" type="button">Semester 2</button>
+                        <button class="nav-link" id="tab-sem2-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem2-<?= e($s['nisn']) ?>" type="button">Semester 2 <?= !$hasGradeSem[2] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-sem3-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem3-<?= e($s['nisn']) ?>" type="button">Semester 3</button>
+                        <button class="nav-link" id="tab-sem3-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem3-<?= e($s['nisn']) ?>" type="button">Semester 3 <?= !$hasGradeSem[3] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-sem4-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem4-<?= e($s['nisn']) ?>" type="button">Semester 4</button>
+                        <button class="nav-link" id="tab-sem4-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem4-<?= e($s['nisn']) ?>" type="button">Semester 4 <?= !$hasGradeSem[4] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-sem5-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem5-<?= e($s['nisn']) ?>" type="button">Semester 5</button>
+                        <button class="nav-link" id="tab-sem5-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem5-<?= e($s['nisn']) ?>" type="button">Semester 5 <?= !$hasGradeSem[5] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-uam-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#uam-<?= e($s['nisn']) ?>" type="button">UAM</button>
+                        <button class="nav-link" id="tab-uam-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#uam-<?= e($s['nisn']) ?>" type="button">UAM <?= !$hasGradeUam ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-ijazah-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#ijazah-<?= e($s['nisn']) ?>" type="button">Nilai Ijazah</button>
@@ -1282,16 +1294,28 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                 </ul>
                 <div class="tab-content" id="tabContent<?= e($s['nisn']) ?>">
                     <?php for ($sem = 1; $sem <= 5; $sem++): 
-                    // Hapus filter tahun_ajaran agar semua nilai sesuai semester dan NISN muncul
-                    $stNilai = db()->prepare('SELECT nr.id, nr.nilai_angka, nr.mapel_id, nr.tahun_ajaran, m.nama_mapel FROM nilai_rapor nr JOIN mapel m ON nr.mapel_id=m.id WHERE nr.nisn=:nisn AND nr.semester=:sem ORDER BY m.id');
+                    // Ambil semua mapel dari master mapel, lalu joinkan dengan nilai rapor jika ada
+                    $stNilai = db()->prepare('
+                        SELECT m.id AS mapel_id, m.nama_mapel, 
+                               nr.id AS rapor_id, nr.nilai_angka, nr.tahun_ajaran 
+                        FROM mapel m 
+                        LEFT JOIN nilai_rapor nr ON m.id = nr.mapel_id AND nr.nisn = :nisn AND nr.semester = :sem 
+                        ORDER BY m.id');
                     $stNilai->execute(['nisn' => $s['nisn'], 'sem' => $sem]);
                     $nilaiRapor = $stNilai->fetchAll();
                         
                         // Hitung rata-rata
                         $totalNilai = 0;
-                        $jumlahMapel = count($nilaiRapor);
+                        $jumlahMapel = 0;
+                        $firstTa = '';
                         foreach ($nilaiRapor as $n) {
-                            $totalNilai += $n['nilai_angka'];
+                            if ($n['nilai_angka'] !== null) {
+                                $totalNilai += $n['nilai_angka'];
+                                $jumlahMapel++;
+                            }
+                            if ($n['tahun_ajaran'] !== null && empty($firstTa)) {
+                                $firstTa = $n['tahun_ajaran'];
+                            }
                         }
                         $rataRata = $jumlahMapel > 0 ? $totalNilai / $jumlahMapel : 0;
                         
@@ -1301,12 +1325,14 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                         }
                         $ta_semester = hitung_tahun_ajaran_dari_angkatan($tahunMasukModalTarget, $sem);
                         if (empty($ta_semester)) {
-                            $ta_semester = count($nilaiRapor) > 0 ? $nilaiRapor[0]['tahun_ajaran'] : $setting['tahun_ajaran'];
+                            $ta_semester = !empty($firstTa) ? $firstTa : $setting['tahun_ajaran'];
                         }
                     ?>
                     <div class="tab-pane fade <?= $sem === 1 ? 'show active' : '' ?>" id="sem<?= $sem ?>-<?= e($s['nisn']) ?>">
                         <h6 class="mb-3">Semester <?= $sem ?> - TA <?= e($ta_semester) ?></h6>
-                        <?php if (count($nilaiRapor) > 0): ?>
+                        <?php if (!$hasGradeSem[$sem]): ?>
+                            <div class="alert alert-warning py-2 mb-3">Belum ada nilai untuk semester ini. Silakan input nilai di bawah.</div>
+                        <?php endif; ?>
                             <div class="table-wrap">
                                 <table class="table table-sm table-bordered">
                                     <thead>
@@ -1324,46 +1350,55 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
                                                 <td class="text-center">
-                                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e((int)round($n['nilai_angka'])) ?>" id="nilai_<?= e($n['id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="<?= $sem ?>">
+                                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm rapor-input" style="width: 80px; margin: 0 auto;" value="<?= $n['nilai_angka'] !== null ? e((int)round($n['nilai_angka'])) : '' ?>" placeholder="00" id="nilai_<?= $n['rapor_id'] ? e($n['rapor_id']) : 'new_'.$sem.'_'.e($n['mapel_id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="<?= $sem ?>">
                                                 </td>
-                                                <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
+                                                <td class="text-center nilai-huruf"><?= $n['nilai_angka'] !== null ? ucwords(terbilang_bulat((int)$n['nilai_angka'])) : '-' ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                                         <tr class="table-secondary fw-bold">
                                                             <td>Jumlah Nilai</td>
-                                                            <td class="text-center"><?= e((string) round($totalNilai)) ?></td>
-                                                            <td class="text-center"><?= ucwords(terbilang_bulat((int) round($totalNilai))) ?></td>
+                                                            <td class="text-center" id="total-sem<?= $sem ?>-<?= e($s['nisn']) ?>"><?= e((string) round($totalNilai)) ?></td>
+                                                            <td class="text-center" id="total-huruf-sem<?= $sem ?>-<?= e($s['nisn']) ?>"><?= $jumlahMapel > 0 ? ucwords(terbilang_bulat((int) round($totalNilai))) : '-' ?></td>
                                                         </tr>
                                                         <tr class="table-secondary fw-bold">
                                                             <td>Rata-Rata</td>
-                                                            <td class="text-center"><?= e(number_format($rataRata, 2, ',', '')) ?></td>
-                                                            <td class="text-center"><?= ucwords(terbilang_nilai($rataRata)) ?></td>
+                                                            <td class="text-center" id="rata-sem<?= $sem ?>-<?= e($s['nisn']) ?>"><?= e(number_format($rataRata, 2, ',', '')) ?></td>
+                                                            <td class="text-center" id="rata-huruf-sem<?= $sem ?>-<?= e($s['nisn']) ?>"><?= $jumlahMapel > 0 ? ucwords(terbilang_nilai($rataRata)) : '-' ?></td>
                                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
-                        <?php else: ?>
-                            <p class="text-secondary text-center">Belum ada nilai untuk semester ini.</p>
-                        <?php endif; ?>
+                    </div>
                     </div>
                     <?php endfor; ?>
                     
                     <?php 
-                        $stUam = db()->prepare('SELECT nu.id, nu.nilai_angka, nu.mapel_id, m.nama_mapel FROM nilai_uam nu JOIN mapel m ON nu.mapel_id=m.id WHERE nu.nisn=:nisn ORDER BY m.id');
+                        // Ambil semua mapel dan left join dengan nilai_uam
+                        $stUam = db()->prepare('
+                            SELECT m.id AS mapel_id, m.nama_mapel, 
+                                   nu.id AS uam_id, nu.nilai_angka 
+                            FROM mapel m 
+                            LEFT JOIN nilai_uam nu ON m.id = nu.mapel_id AND nu.nisn = :nisn 
+                            ORDER BY m.id');
                         $stUam->execute(['nisn' => $s['nisn']]);
                         $nilaiUam = $stUam->fetchAll();
                         
                         // Hitung rata-rata UAM
                         $totalNilaiUam = 0;
-                        $jumlahMapelUam = count($nilaiUam);
+                        $jumlahMapelUam = 0;
                         foreach ($nilaiUam as $n) {
-                            $totalNilaiUam += $n['nilai_angka'];
+                            if ($n['nilai_angka'] !== null) {
+                                $totalNilaiUam += $n['nilai_angka'];
+                                $jumlahMapelUam++;
+                            }
                         }
                         $rataRataUam = $jumlahMapelUam > 0 ? $totalNilaiUam / $jumlahMapelUam : 0;
                     ?>
                     <div class="tab-pane fade" id="uam-<?= e($s['nisn']) ?>">
                         <h6 class="mb-3">Ujian Akhir Madrasah (UAM)</h6>
-                        <?php if (count($nilaiUam) > 0): ?>
+                        <?php if (!$hasGradeUam): ?>
+                            <div class="alert alert-warning py-2 mb-3">Belum ada nilai UAM. Silakan input nilai di bawah.</div>
+                        <?php endif; ?>
                             <div class="table-wrap">
                                 <table class="table table-sm table-bordered">
                                     <thead>
@@ -1381,27 +1416,24 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                                             <tr>
                                                 <td><?= e($n['nama_mapel']) ?></td>
                                                 <td class="text-center">
-                                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm" style="width: 80px; margin: 0 auto;" value="<?= e((int)round($n['nilai_angka'])) ?>" id="nilai_uam_<?= e($n['mapel_id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="99">
+                                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm uam-input" style="width: 80px; margin: 0 auto;" value="<?= $n['nilai_angka'] !== null ? e((int)round($n['nilai_angka'])) : '' ?>" placeholder="00" id="nilai_uam_<?= $n['uam_id'] ? e($n['uam_id']) : 'new_99_'.e($n['mapel_id']) ?>" data-nisn="<?= e($s['nisn']) ?>" data-mapel-id="<?= e($n['mapel_id']) ?>" data-semester="99">
                                                 </td>
-                                                <td class="text-center"><?= ucwords(terbilang_bulat((int)$n['nilai_angka'])) ?></td>
+                                                <td class="text-center nilai-huruf-uam"><?= $n['nilai_angka'] !== null ? ucwords(terbilang_bulat((int)$n['nilai_angka'])) : '-' ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                         <tr class="table-secondary fw-bold">
                                             <td>Jumlah Nilai</td>
-                                            <td class="text-center"><?= e((string) round($totalNilaiUam)) ?></td>
-                                            <td class="text-center"><?= ucwords(terbilang_bulat((int) round($totalNilaiUam))) ?></td>
+                                            <td class="text-center" id="total-sem99-<?= e($s['nisn']) ?>"><?= e((string) round($totalNilaiUam)) ?></td>
+                                            <td class="text-center" id="total-huruf-sem99-<?= e($s['nisn']) ?>"><?= $jumlahMapelUam > 0 ? ucwords(terbilang_bulat((int) round($totalNilaiUam))) : '-' ?></td>
                                         </tr>
                                         <tr class="table-secondary fw-bold">
                                             <td>Rata-Rata</td>
-                                            <td class="text-center"><?= e(number_format($rataRataUam, 2, ',', '')) ?></td>
-                                            <td class="text-center"><?= ucwords(terbilang_nilai($rataRataUam)) ?></td>
+                                            <td class="text-center" id="rata-sem99-<?= e($s['nisn']) ?>"><?= e(number_format($rataRataUam, 2, ',', '')) ?></td>
+                                            <td class="text-center" id="rata-huruf-sem99-<?= e($s['nisn']) ?>"><?= $jumlahMapelUam > 0 ? ucwords(terbilang_nilai($rataRataUam)) : '-' ?></td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
-                        <?php else: ?>
-                            <p class="text-secondary text-center">Belum ada nilai UAM.</p>
-                        <?php endif; ?>
                     </div>
 
                     <?php
@@ -1526,6 +1558,53 @@ document.addEventListener('change', function(e) {
         const batalBtn = document.getElementById(`batalBtn${nisn}`);
         if (simpanBtn) simpanBtn.classList.remove('d-none');
         if (batalBtn) batalBtn.classList.remove('d-none');
+    }
+});
+
+// Update real-time "Jumlah Nilai" dan "Rata-Rata"
+document.addEventListener('input', function(e) {
+    if (e.target.matches('.rapor-input') || e.target.matches('.uam-input')) {
+        const inputEl = e.target;
+        const nisn = inputEl.dataset.nisn;
+        const semester = inputEl.dataset.semester; // 1-5 or 99 (uam)
+        
+        // Cari tabel form input terkait
+        let tableBody = inputEl.closest('tbody');
+        if (!tableBody) return;
+        
+        // Ambil semua input di tabel ini
+        let inputs = tableBody.querySelectorAll(e.target.matches('.rapor-input') ? '.rapor-input' : '.uam-input');
+        
+        let total = 0;
+        let count = 0;
+        inputs.forEach(inp => {
+            let val = parseFloat(inp.value);
+            if (!isNaN(val)) {
+                total += val;
+                count++;
+            }
+        });
+        
+        let rataRata = count > 0 ? (total / count) : 0;
+        
+        // Format rata-rata 2 desimal koma (misal 85,50)
+        let formattedRata = rataRata.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        // Update span jumlah (dibulatkan)
+        let totalSpan = document.getElementById(`total-sem${semester}-${nisn}`);
+        if (totalSpan) totalSpan.textContent = Math.round(total);
+        
+        // Update span huruf jumlah (Opsional, di-skip script JS complex terbilang, diganti "-" jika diubah manual atau keep default)
+        let totalHurufSpan = document.getElementById(`total-huruf-sem${semester}-${nisn}`);
+        if (totalHurufSpan) totalHurufSpan.textContent = count > 0 ? '(Otomatis dihitung saat simpan)' : '-';
+        
+        // Update span rata-rata
+        let rataSpan = document.getElementById(`rata-sem${semester}-${nisn}`);
+        if (rataSpan) rataSpan.textContent = formattedRata;
+        
+        // Update span huruf rata-rata
+        let rataHurufSpan = document.getElementById(`rata-huruf-sem${semester}-${nisn}`);
+        if (rataHurufSpan) rataHurufSpan.textContent = count > 0 ? '(Otomatis dihitung saat simpan)' : '-';
     }
 });
 
