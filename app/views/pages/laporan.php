@@ -102,12 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetSem = $sheet->createSheet();
             $sheetSem->setTitle('Semester ' . $sem);
 
-            // Hitung kolom terakhir untuk merge title
-            $numMapel = count($mapelList);
-            $totalCols = 4 + $numMapel + 1; // 4 info cols + mapel + rata-rata
-            $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
-            
-            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-D)
+            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-E)
             $sheetSem->mergeCells('A1:A2');
             $sheetSem->setCellValue('A1', 'No');
             $sheetSem->mergeCells('B1:B2');
@@ -116,51 +111,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetSem->setCellValue('C1', 'NIS');
             $sheetSem->mergeCells('D1:D2');
             $sheetSem->setCellValue('D1', 'Nama Lengkap');
+            $sheetSem->mergeCells('E1:E2');
+            $sheetSem->setCellValue('E1', 'Kelas');
             
+            // Hitung kolom terakhir untuk merge title
+            $numMapel = count($mapelList);
+            $totalCols = 5 + $numMapel + 4; // 5 info cols + mapel + (Jumlah, Rata-rata, Rank Kelas, Rank Angkatan)
+            $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+
             // BARIS 1: Merge horizontal untuk judul "NILAI RAPORT SEMESTER X"
-            $sheetSem->mergeCells('E1:' . $lastCol . '1');
-            $sheetSem->setCellValue('E1', 'NILAI RAPORT SEMESTER ' . $sem);
+            $sheetSem->mergeCells('F1:' . $lastCol . '1');
+            $sheetSem->setCellValue('F1', 'NILAI RAPORT SEMESTER ' . $sem);
             
-            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari E2)
-            $colIndex = 5; // E = 5
+            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari F2)
+            $colIndex = 6; // F = 6
             foreach ($mapelList as $m) {
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
                 $sheetSem->setCellValue($colLetter . '2', $m['nama_mapel']);
                 $colIndex++;
             }
-            // Kolom terakhir untuk RATA-RATA
-            $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-            $sheetSem->setCellValue($lastColLetter . '2', 'RATA-RATA');
+
+            // Header kolom tambahan (Jumlah, Rata-rata, Ranking Kelas, Ranking Angkatan)
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetSem->setCellValue($colLetter . '2', 'JUMLAH');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetSem->setCellValue($colLetter . '2', 'RATA-RATA');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetSem->setCellValue($colLetter . '2', 'RANKING KELAS');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetSem->setCellValue($colLetter . '2', 'RANKING ANGKATAN');
             
-            // Styling untuk kolom info (A1:D2) - merged cells
-            $infoStyle = $sheetSem->getStyle('A1:D2');
+            // Styling untuk kolom info (A1:E2) - merged cells
+            $infoStyle = $sheetSem->getStyle('A1:E2');
             $infoStyle->getFont()->setBold(true);
             $infoStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $infoStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
             
-            // Styling untuk judul baris 1 (E1 merged)
-            $titleStyle = $sheetSem->getStyle('E1:' . $lastCol . '1');
+            // Styling untuk judul baris 1 (F1 merged)
+            $titleStyle = $sheetSem->getStyle('F1:' . $lastCol . '1');
             $titleStyle->getFont()->setBold(true);
             $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $titleStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
-            // Styling untuk header mapel baris 2 (E2 sampai lastCol)
-            $headerStyle = $sheetSem->getStyle('E2:' . $lastCol . '2');
+            // Styling untuk header mapel baris 2 (F2 sampai lastCol)
+            $headerStyle = $sheetSem->getStyle('F2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
             $headerStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
             // Data siswa per semester
-            $siswaNo = 1;
-            $dataRowStart = 3; // Row 3 is first data row (karena row 1 & 2 untuk header)
-            foreach ($angkatanSiswa as $siswa) {
-                $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
+            $dataSiswaLengkap = [];
 
+            // Pra-proses pengumpulan nilai dan ranking
+            foreach ($angkatanSiswa as $siswa) {
                 // Ambil nilai rapor siswa di semester ini untuk semua mapel
                 $stNilai = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester");
                 $stNilai->execute([
@@ -169,21 +177,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
                 $nilaiData = $stNilai->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-                // Isi nilai per mapel dalam urutan mapelList, dan hitung rata-rata
-                $nilaiValues = [];
+                $nilaiValuesRaw = [];
+                $nilaiMapelProcessed = [];
                 foreach ($mapelList as $m) {
                     $nilai = $nilaiData[$m['id']] ?? null;
                     if ($nilai !== null) {
-                        $nilaiValues[] = (float) $nilai;
-                        $rowData[] = (int)round((float) $nilai);
+                        $nilaiValuesRaw[] = (float) $nilai;
+                        $nilaiMapelProcessed[] = (int)round((float) $nilai);
                     } else {
-                        $rowData[] = '';
+                        $nilaiMapelProcessed[] = '';
                     }
                 }
 
-                // Hitung rata-rata jika ada nilai
-                $rataRata = count($nilaiValues) > 0 ? round(array_sum($nilaiValues) / count($nilaiValues), 0) : '';
-                $rowData[] = $rataRata;
+                $jumlah = count($nilaiValuesRaw) > 0 ? round(array_sum($nilaiValuesRaw), 0) : 0;
+                $rataRata = count($nilaiValuesRaw) > 0 ? round(array_sum($nilaiValuesRaw) / count($nilaiValuesRaw), 0) : 0;
+
+                $dataSiswaLengkap[] = [
+                    'nisn' => $siswa['nisn'],
+                    'nis' => $siswa['nis'],
+                    'nama' => $siswa['nama'],
+                    'kelas' => $siswa['kelas'] ?? '-',
+                    'nilai_mapel' => $nilaiMapelProcessed,
+                    'jumlah' => $jumlah,
+                    'rata_rata' => $rataRata,
+                ];
+            }
+
+            // Hitung ranking (Angkatan dan Kelas)
+            $angkatanScores = array_column($dataSiswaLengkap, 'jumlah');
+            array_multisort($angkatanScores, SORT_DESC, SORT_NUMERIC, $dataSiswaLengkap);
+            
+            // Assign Ranking Angkatan
+            $rankAngkatan = 1;
+            foreach ($dataSiswaLengkap as $k => $v) {
+                // Handle tie breaks based on previous score safely
+                if ($k > 0 && $v['jumlah'] == $dataSiswaLengkap[$k-1]['jumlah']) {
+                    $dataSiswaLengkap[$k]['rank_angkatan'] = $dataSiswaLengkap[$k-1]['rank_angkatan'];
+                } else {
+                    $dataSiswaLengkap[$k]['rank_angkatan'] = $rankAngkatan;
+                }
+                $rankAngkatan++;
+            }
+
+            // Group by Kelas and calculate Rank Kelas
+            $groupedByKelas = [];
+            foreach ($dataSiswaLengkap as $k => $v) {
+                $groupedByKelas[$v['kelas']][$k] = $v['jumlah'];
+            }
+            
+            foreach ($groupedByKelas as $kch => $kelasScores) {
+                arsort($kelasScores); // Sort descending within class
+                $rankKelas = 1;
+                $prevScore = -1;
+                $prevRank = 1;
+
+                foreach ($kelasScores as $origIndex => $score) {
+                    if ($score === $prevScore) {
+                        $dataSiswaLengkap[$origIndex]['rank_kelas'] = $prevRank;
+                    } else {
+                        $dataSiswaLengkap[$origIndex]['rank_kelas'] = $rankKelas;
+                        $prevRank = $rankKelas;
+                        $prevScore = $score;
+                    }
+                    $rankKelas++;
+                }
+            }
+
+            // Restore original sort order (Kelas -> Absen/Nama)
+            // Using angkatanSiswa source order as it was ordered previously via SQL
+            $originalOrderLookup = [];
+            foreach ($angkatanSiswa as $idx => $s) {
+                $originalOrderLookup[$s['nisn']] = $idx;
+            }
+
+            usort($dataSiswaLengkap, function($a, $b) use ($originalOrderLookup) {
+                return $originalOrderLookup[$a['nisn']] <=> $originalOrderLookup[$b['nisn']];
+            });
+
+            // Write to Excel
+            $siswaNo = 1;
+            $dataRowStart = 3; 
+            
+            foreach ($dataSiswaLengkap as $siswaX) {
+                $rowData = [
+                    $siswaNo++, 
+                    $siswaX['nisn'], 
+                    $siswaX['nis'], 
+                    $siswaX['nama'],
+                    $siswaX['kelas']
+                ];
+
+                $rowData = array_merge($rowData, $siswaX['nilai_mapel']);
+                
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['jumlah'] : '';
+                $rowData[] = $siswaX['rata_rata'] > 0 ? $siswaX['rata_rata'] : '';
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['rank_kelas'] : '';
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['rank_angkatan'] : '';
 
                 $sheetSem->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
             }
@@ -199,12 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetUam = $sheet->createSheet();
             $sheetUam->setTitle('UAM (Akhir)');
 
-            // Hitung kolom terakhir untuk merge title
-            $numMapel = count($mapelList);
-            $totalCols = 4 + $numMapel; // 4 info cols + mapel (UAM tidak ada rata-rata)
-            $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
-            
-            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-D)
+            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-E)
             $sheetUam->mergeCells('A1:A2');
             $sheetUam->setCellValue('A1', 'No');
             $sheetUam->mergeCells('B1:B2');
@@ -213,58 +297,164 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetUam->setCellValue('C1', 'NIS');
             $sheetUam->mergeCells('D1:D2');
             $sheetUam->setCellValue('D1', 'Nama Lengkap');
+            $sheetUam->mergeCells('E1:E2');
+            $sheetUam->setCellValue('E1', 'Kelas');
             
+            // Hitung kolom terakhir untuk merge title
+            $numMapel = count($mapelList);
+            $totalCols = 5 + $numMapel + 4; // 5 info cols + mapel + (Jumlah, Rata-rata, Rank Kelas, Rank Angkatan)
+            $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+
             // BARIS 1: Merge horizontal untuk judul "NILAI UAM (AKHIR)"
-            $sheetUam->mergeCells('E1:' . $lastCol . '1');
-            $sheetUam->setCellValue('E1', 'NILAI UAM (AKHIR)');
+            $sheetUam->mergeCells('F1:' . $lastCol . '1');
+            $sheetUam->setCellValue('F1', 'NILAI UAM (AKHIR)');
             
-            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari E2)
-            $colIndex = 5; // E = 5
+            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari F2)
+            $colIndex = 6; // F = 6
             foreach ($mapelList as $m) {
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
                 $sheetUam->setCellValue($colLetter . '2', $m['nama_mapel']);
                 $colIndex++;
             }
+
+            // Header kolom tambahan (Jumlah, Rata-rata, Ranking Kelas, Ranking Angkatan)
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetUam->setCellValue($colLetter . '2', 'JUMLAH');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetUam->setCellValue($colLetter . '2', 'RATA-RATA');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetUam->setCellValue($colLetter . '2', 'RANKING KELAS');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetUam->setCellValue($colLetter . '2', 'RANKING ANGKATAN');
             
-            // Styling untuk kolom info (A1:D2) - merged cells
-            $infoStyle = $sheetUam->getStyle('A1:D2');
+            // Styling untuk kolom info (A1:E2) - merged cells
+            $infoStyle = $sheetUam->getStyle('A1:E2');
             $infoStyle->getFont()->setBold(true);
             $infoStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $infoStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
             
-            // Styling untuk judul baris 1 (E1 merged)
-            $titleStyle = $sheetUam->getStyle('E1:' . $lastCol . '1');
+            // Styling untuk judul baris 1 (F1 merged)
+            $titleStyle = $sheetUam->getStyle('F1:' . $lastCol . '1');
             $titleStyle->getFont()->setBold(true);
             $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $titleStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
-            // Styling untuk header mapel baris 2 (E2 sampai lastCol)
-            $headerStyle = $sheetUam->getStyle('E2:' . $lastCol . '2');
+            // Styling untuk header mapel baris 2 (F2 sampai lastCol)
+            $headerStyle = $sheetUam->getStyle('F2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
             $headerStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $headerStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
-            // Data UAM untuk siswa angkatan
-            $siswaNo = 1;
-            $dataRowStart = 3; // Row 3 is first data row (karena row 1 & 2 untuk header)
-            foreach ($angkatanSiswa as $siswa) {
-                $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
+            // Data UAM per semester
+            $dataSiswaLengkapUam = [];
 
+            // Pra-proses pengumpulan nilai dan ranking
+            foreach ($angkatanSiswa as $siswa) {
                 // Ambil nilai UAM siswa
                 $stUam = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_uam WHERE nisn=:nisn");
                 $stUam->execute(['nisn' => $siswa['nisn']]);
                 $nilaiUam = $stUam->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-                // Isi nilai UAM per mapel
+                $nilaiValuesRaw = [];
+                $nilaiMapelProcessed = [];
                 foreach ($mapelList as $m) {
-                    $nilai = $nilaiUam[$m['id']] ?? '';
-                    $rowData[] = $nilai !== '' ? (int)round((float) $nilai) : '';
+                    $nilai = $nilaiUam[$m['id']] ?? null;
+                    if ($nilai !== null && $nilai !== '') {
+                        $nilaiValuesRaw[] = (float) $nilai;
+                        $nilaiMapelProcessed[] = (int)round((float) $nilai);
+                    } else {
+                        $nilaiMapelProcessed[] = '';
+                    }
                 }
+
+                $jumlah = count($nilaiValuesRaw) > 0 ? round(array_sum($nilaiValuesRaw), 0) : 0;
+                $rataRata = count($nilaiValuesRaw) > 0 ? round(array_sum($nilaiValuesRaw) / count($nilaiValuesRaw), 0) : 0;
+
+                $dataSiswaLengkapUam[] = [
+                    'nisn' => $siswa['nisn'],
+                    'nis' => $siswa['nis'],
+                    'nama' => $siswa['nama'],
+                    'kelas' => $siswa['kelas'] ?? '-',
+                    'nilai_mapel' => $nilaiMapelProcessed,
+                    'jumlah' => $jumlah,
+                    'rata_rata' => $rataRata,
+                ];
+            }
+
+            // Hitung ranking (Angkatan dan Kelas)
+            $angkatanScores = array_column($dataSiswaLengkapUam, 'jumlah');
+            array_multisort($angkatanScores, SORT_DESC, SORT_NUMERIC, $dataSiswaLengkapUam);
+            
+            // Assign Ranking Angkatan
+            $rankAngkatan = 1;
+            foreach ($dataSiswaLengkapUam as $k => $v) {
+                // Handle tie breaks based on previous score safely
+                if ($k > 0 && $v['jumlah'] == $dataSiswaLengkapUam[$k-1]['jumlah']) {
+                    $dataSiswaLengkapUam[$k]['rank_angkatan'] = $dataSiswaLengkapUam[$k-1]['rank_angkatan'];
+                } else {
+                    $dataSiswaLengkapUam[$k]['rank_angkatan'] = $rankAngkatan;
+                }
+                $rankAngkatan++;
+            }
+
+            // Group by Kelas and calculate Rank Kelas
+            $groupedByKelas = [];
+            foreach ($dataSiswaLengkapUam as $k => $v) {
+                $groupedByKelas[$v['kelas']][$k] = $v['jumlah'];
+            }
+            
+            foreach ($groupedByKelas as $kch => $kelasScores) {
+                arsort($kelasScores); // Sort descending within class
+                $rankKelas = 1;
+                $prevScore = -1;
+                $prevRank = 1;
+
+                foreach ($kelasScores as $origIndex => $score) {
+                    if ($score === $prevScore) {
+                        $dataSiswaLengkapUam[$origIndex]['rank_kelas'] = $prevRank;
+                    } else {
+                        $dataSiswaLengkapUam[$origIndex]['rank_kelas'] = $rankKelas;
+                        $prevRank = $rankKelas;
+                        $prevScore = $score;
+                    }
+                    $rankKelas++;
+                }
+            }
+
+            // Restore original sort order
+            $originalOrderLookup = [];
+            foreach ($angkatanSiswa as $idx => $s) {
+                $originalOrderLookup[$s['nisn']] = $idx;
+            }
+
+            usort($dataSiswaLengkapUam, function($a, $b) use ($originalOrderLookup) {
+                return $originalOrderLookup[$a['nisn']] <=> $originalOrderLookup[$b['nisn']];
+            });
+
+            // Write to Excel UAM
+            $siswaNo = 1;
+            $dataRowStart = 3; 
+            
+            foreach ($dataSiswaLengkapUam as $siswaX) {
+                $rowData = [
+                    $siswaNo++, 
+                    $siswaX['nisn'], 
+                    $siswaX['nis'], 
+                    $siswaX['nama'],
+                    $siswaX['kelas']
+                ];
+
+                $rowData = array_merge($rowData, $siswaX['nilai_mapel']);
+                
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['jumlah'] : '';
+                $rowData[] = $siswaX['rata_rata'] > 0 ? $siswaX['rata_rata'] : '';
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['rank_kelas'] : '';
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['rank_angkatan'] : '';
 
                 $sheetUam->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
             }
@@ -283,7 +473,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $totalCols = 4 + $numMapel + 1; // 4 info cols + mapel + rata-rata ijazah
             $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
             
-            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-D)
+            // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-E)
             $sheetIjazah->mergeCells('A1:A2');
             $sheetIjazah->setCellValue('A1', 'No');
             $sheetIjazah->mergeCells('B1:B2');
@@ -292,40 +482,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetIjazah->setCellValue('C1', 'NIS');
             $sheetIjazah->mergeCells('D1:D2');
             $sheetIjazah->setCellValue('D1', 'Nama Lengkap');
+            $sheetIjazah->mergeCells('E1:E2');
+            $sheetIjazah->setCellValue('E1', 'Kelas');
             
+            // Hitung kolom terakhir untuk merge title
+            $numMapel = count($mapelList);
+            $totalCols = 5 + $numMapel + 4; // 5 info cols + mapel + (Jumlah, Rata-rata, Rank Kelas, Rank Angkatan)
+            $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+
             // BARIS 1: Merge horizontal untuk judul "NILAI IJAZAH"
-            $sheetIjazah->mergeCells('E1:' . $lastCol . '1');
-            $sheetIjazah->setCellValue('E1', 'NILAI IJAZAH');
+            $sheetIjazah->mergeCells('F1:' . $lastCol . '1');
+            $sheetIjazah->setCellValue('F1', 'NILAI IJAZAH');
             
-            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari E2)
-            $colIndex = 5; // E = 5
+            // BARIS 2: Header kolom untuk mata pelajaran (mulai dari F2)
+            $colIndex = 6; // F = 6
             foreach ($mapelList as $m) {
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
                 $sheetIjazah->setCellValue($colLetter . '2', $m['nama_mapel']);
                 $colIndex++;
             }
-            // Kolom terakhir untuk RATA-RATA IJAZAH
-            $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-            $sheetIjazah->setCellValue($lastColLetter . '2', 'RATA-RATA IJAZAH');
+
+            // Header kolom tambahan (Jumlah, Rata-rata, Ranking Kelas, Ranking Angkatan)
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetIjazah->setCellValue($colLetter . '2', 'JUMLAH');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetIjazah->setCellValue($colLetter . '2', 'RATA-RATA');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetIjazah->setCellValue($colLetter . '2', 'RANKING KELAS');
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheetIjazah->setCellValue($colLetter . '2', 'RANKING ANGKATAN');
             
-            // Styling untuk kolom info (A1:D2) - merged cells
-            $infoStyle = $sheetIjazah->getStyle('A1:D2');
+            // Styling untuk kolom info (A1:E2) - merged cells
+            $infoStyle = $sheetIjazah->getStyle('A1:E2');
             $infoStyle->getFont()->setBold(true);
             $infoStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $infoStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $infoStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $infoStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
             
-            // Styling untuk judul baris 1 (E1 merged)
-            $titleStyle = $sheetIjazah->getStyle('E1:' . $lastCol . '1');
+            // Styling untuk judul baris 1 (F1 merged)
+            $titleStyle = $sheetIjazah->getStyle('F1:' . $lastCol . '1');
             $titleStyle->getFont()->setBold(true);
             $titleStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $titleStyle->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             $titleStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
             $titleStyle->getFill()->getStartColor()->setARGB('FFFFFF00'); // Yellow background
 
-            // Styling untuk header mapel baris 2 (E2 sampai lastCol)
-            $headerStyle = $sheetIjazah->getStyle('E2:' . $lastCol . '2');
+            // Styling untuk header mapel baris 2 (F2 sampai lastCol)
+            $headerStyle = $sheetIjazah->getStyle('F2:' . $lastCol . '2');
             $headerStyle->getFont()->setBold(true);
             $headerStyle->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             $headerStyle->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
@@ -333,10 +537,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Data Nilai Ijazah untuk siswa angkatan
             // Formula: (rata-rata rapor semester 1-5 * 0.6) + (nilai UAM * 0.4)
-            $siswaNo = 1;
-            $dataRowStart = 3; // Row 3 is first data row (karena row 1 & 2 untuk header)
+            $dataSiswaLengkapIjazah = [];
+
+            // Pra-proses pengumpulan nilai ijazah dan ranking
             foreach ($angkatanSiswa as $siswa) {
-                $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
 
                 // Ambil rata-rata nilai rapor semester 1-5 per mapel
                 $stRataRapor = db()->prepare("SELECT mapel_id, AVG(nilai_angka) AS rata_rapor FROM nilai_rapor WHERE nisn=:nisn AND semester BETWEEN 1 AND 5 GROUP BY mapel_id");
@@ -348,24 +552,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stUam->execute(['nisn' => $siswa['nisn']]);
                 $nilaiUam = $stUam->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-                // Hitung nilai ijazah per mapel
-                $nilaiIjazahValues = [];
+                $nilaiIjazahValuesRaw = [];
+                $nilaiMapelProcessed = [];
+
                 foreach ($mapelList as $m) {
                     $rataRapor = $rataRaporByMapel[$m['id']] ?? null;
                     $uam = $nilaiUam[$m['id']] ?? null;
 
                     if ($rataRapor !== null && $uam !== null) {
                         $nilaiIjazah = round(hitung_nilai_ijazah((float) $rataRapor, (float) $uam), 0);
-                        $nilaiIjazahValues[] = $nilaiIjazah;
-                        $rowData[] = (int)$nilaiIjazah;
+                        $nilaiIjazahValuesRaw[] = $nilaiIjazah;
+                        $nilaiMapelProcessed[] = (int)$nilaiIjazah;
                     } else {
-                        $rowData[] = '';
+                        $nilaiMapelProcessed[] = '';
                     }
                 }
 
-                // Hitung rata-rata ijazah
-                $rataIjazah = count($nilaiIjazahValues) > 0 ? round(array_sum($nilaiIjazahValues) / count($nilaiIjazahValues), 0) : '';
-                $rowData[] = $rataIjazah;
+                $jumlah = count($nilaiIjazahValuesRaw) > 0 ? round(array_sum($nilaiIjazahValuesRaw), 0) : 0;
+                $rataRata = count($nilaiIjazahValuesRaw) > 0 ? round(array_sum($nilaiIjazahValuesRaw) / count($nilaiIjazahValuesRaw), 0) : 0;
+
+                $dataSiswaLengkapIjazah[] = [
+                    'nisn' => $siswa['nisn'],
+                    'nis' => $siswa['nis'],
+                    'nama' => $siswa['nama'],
+                    'kelas' => $siswa['kelas'] ?? '-',
+                    'nilai_mapel' => $nilaiMapelProcessed,
+                    'jumlah' => $jumlah,
+                    'rata_rata' => $rataRata,
+                ];
+            }
+
+            // Hitung ranking (Angkatan dan Kelas)
+            $angkatanScores = array_column($dataSiswaLengkapIjazah, 'jumlah');
+            array_multisort($angkatanScores, SORT_DESC, SORT_NUMERIC, $dataSiswaLengkapIjazah);
+            
+            // Assign Ranking Angkatan
+            $rankAngkatan = 1;
+            foreach ($dataSiswaLengkapIjazah as $k => $v) {
+                // Handle tie breaks based on previous score safely
+                if ($k > 0 && $v['jumlah'] == $dataSiswaLengkapIjazah[$k-1]['jumlah']) {
+                    $dataSiswaLengkapIjazah[$k]['rank_angkatan'] = $dataSiswaLengkapIjazah[$k-1]['rank_angkatan'];
+                } else {
+                    $dataSiswaLengkapIjazah[$k]['rank_angkatan'] = $rankAngkatan;
+                }
+                $rankAngkatan++;
+            }
+
+            // Group by Kelas and calculate Rank Kelas
+            $groupedByKelas = [];
+            foreach ($dataSiswaLengkapIjazah as $k => $v) {
+                $groupedByKelas[$v['kelas']][$k] = $v['jumlah'];
+            }
+            
+            foreach ($groupedByKelas as $kch => $kelasScores) {
+                arsort($kelasScores); // Sort descending within class
+                $rankKelas = 1;
+                $prevScore = -1;
+                $prevRank = 1;
+
+                foreach ($kelasScores as $origIndex => $score) {
+                    if ($score === $prevScore) {
+                        $dataSiswaLengkapIjazah[$origIndex]['rank_kelas'] = $prevRank;
+                    } else {
+                        $dataSiswaLengkapIjazah[$origIndex]['rank_kelas'] = $rankKelas;
+                        $prevRank = $rankKelas;
+                        $prevScore = $score;
+                    }
+                    $rankKelas++;
+                }
+            }
+
+            // Restore original sort order
+            $originalOrderLookup = [];
+            foreach ($angkatanSiswa as $idx => $s) {
+                $originalOrderLookup[$s['nisn']] = $idx;
+            }
+
+            usort($dataSiswaLengkapIjazah, function($a, $b) use ($originalOrderLookup) {
+                return $originalOrderLookup[$a['nisn']] <=> $originalOrderLookup[$b['nisn']];
+            });
+
+            // Write to Excel Ijazah
+            $siswaNo = 1;
+            $dataRowStart = 3; 
+            
+            foreach ($dataSiswaLengkapIjazah as $siswaX) {
+                $rowData = [
+                    $siswaNo++, 
+                    $siswaX['nisn'], 
+                    $siswaX['nis'], 
+                    $siswaX['nama'],
+                    $siswaX['kelas']
+                ];
+
+                $rowData = array_merge($rowData, $siswaX['nilai_mapel']);
+                
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['jumlah'] : '';
+                $rowData[] = $siswaX['rata_rata'] > 0 ? $siswaX['rata_rata'] : '';
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['rank_kelas'] : '';
+                $rowData[] = $siswaX['jumlah'] > 0 ? $siswaX['rank_angkatan'] : '';
 
                 $sheetIjazah->fromArray([$rowData], null, 'A' . ($dataRowStart + $siswaNo - 2));
             }
