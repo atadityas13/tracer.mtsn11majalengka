@@ -731,14 +731,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $stmtCheck = db()->prepare('SELECT id FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id LIMIT 1');
                     $stmtCheck->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId]);
+                    
+                    // Tentukan tahun_ajaran historis yang tepat untuk nilai ini
+                    $stSiswaInfo = db()->prepare('SELECT tahun_masuk, current_semester FROM siswa WHERE nisn=:nisn LIMIT 1');
+                    $stSiswaInfo->execute(['nisn' => $nisn]);
+                    $siswaInfo = $stSiswaInfo->fetch();
+                    $tahunMasukTarget = $siswaInfo['tahun_masuk'] ?? '';
+                    if (empty($tahunMasukTarget)) {
+                        $tahunMasukTarget = hitung_tahun_masuk_dari_semester($setting['tahun_ajaran'], (int) ($siswaInfo['current_semester'] ?? 1));
+                    }
+                    $targetTa = hitung_tahun_ajaran_dari_angkatan($tahunMasukTarget, $semester);
+                    if (empty($targetTa)) {
+                        $targetTa = $setting['tahun_ajaran'];
+                    }
+
                     if ($stmtCheck->fetch()) {
-                        // Update tanpa merubah tahun ajaran lama
-                        $stmt = db()->prepare('UPDATE nilai_rapor SET nilai_angka=:nilai WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id');
-                        $stmt->execute(['nilai' => $nilaiAngka, 'nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId]);
+                        // Update
+                        $stmt = db()->prepare('UPDATE nilai_rapor SET nilai_angka=:nilai, tahun_ajaran=:ta WHERE nisn=:nisn AND semester=:semester AND mapel_id=:mapel_id');
+                        $stmt->execute(['nilai' => $nilaiAngka, 'ta' => $targetTa, 'nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId]);
                     } else {
-                        // Insert gunakan tahun ajaran yang sedang aktif
+                        // Insert gunakan tahun ajaran historis yang tepat
                         $stmt = db()->prepare('INSERT INTO nilai_rapor (nisn, semester, mapel_id, tahun_ajaran, nilai_angka) VALUES (:nisn,:semester,:mapel_id,:ta,:nilai)');
-                        $stmt->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $setting['tahun_ajaran'], 'nilai' => $nilaiAngka]);
+                        $stmt->execute(['nisn' => $nisn, 'semester' => $semester, 'mapel_id' => $mapelId, 'ta' => $targetTa, 'nilai' => $nilaiAngka]);
                     }
                 }
             }
@@ -1280,9 +1294,17 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                             $totalNilai += $n['nilai_angka'];
                         }
                         $rataRata = $jumlahMapel > 0 ? $totalNilai / $jumlahMapel : 0;
+                        
+                        $tahunMasukModalTarget = $s['tahun_masuk'] ?? '';
+                        if (empty($tahunMasukModalTarget)) {
+                            $tahunMasukModalTarget = hitung_tahun_masuk_dari_semester($setting['tahun_ajaran'], normalize_current_semester($s['current_semester'] ?? 1));
+                        }
+                        $ta_semester = hitung_tahun_ajaran_dari_angkatan($tahunMasukModalTarget, $sem);
+                        if (empty($ta_semester)) {
+                            $ta_semester = count($nilaiRapor) > 0 ? $nilaiRapor[0]['tahun_ajaran'] : $setting['tahun_ajaran'];
+                        }
                     ?>
                     <div class="tab-pane fade <?= $sem === 1 ? 'show active' : '' ?>" id="sem<?= $sem ?>-<?= e($s['nisn']) ?>">
-                        <?php $ta_semester = count($nilaiRapor) > 0 ? $nilaiRapor[0]['tahun_ajaran'] : $setting['tahun_ajaran']; ?>
                         <h6 class="mb-3">Semester <?= $sem ?> - TA <?= e($ta_semester) ?></h6>
                         <?php if (count($nilaiRapor) > 0): ?>
                             <div class="table-wrap">
