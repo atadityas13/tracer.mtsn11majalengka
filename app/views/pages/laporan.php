@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Hanya ambil siswa yang sedang berada pada semester pilihan.
-        $sqlSiswa = "SELECT nisn, nis, nama FROM siswa WHERE status_siswa='Aktif'";
+        $sqlSiswa = "SELECT nisn, nis, nama, kelas FROM siswa WHERE status_siswa='Aktif'";
         $paramsSiswa = [];
         if ($isAkhir) {
             $sqlSiswa .= " AND current_semester = 6";
