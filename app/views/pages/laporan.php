@@ -162,11 +162,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
 
                 // Ambil nilai rapor siswa di semester ini untuk semua mapel
-                $stNilai = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester AND tahun_ajaran=:ta");
+                $stNilai = db()->prepare("SELECT mapel_id, nilai_angka FROM nilai_rapor WHERE nisn=:nisn AND semester=:semester");
                 $stNilai->execute([
                     'nisn' => $siswa['nisn'],
                     'semester' => $sem,
-                    'ta' => $tahunAjaranAktif,
                 ]);
                 $nilaiData = $stNilai->fetchAll(\PDO::FETCH_KEY_PAIR);
 
@@ -340,8 +339,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $rowData = [$siswaNo++, $siswa['nisn'], $siswa['nis'], $siswa['nama']];
 
                 // Ambil rata-rata nilai rapor semester 1-5 per mapel
-                $stRataRapor = db()->prepare("SELECT mapel_id, AVG(nilai_angka) AS rata_rapor FROM nilai_rapor WHERE nisn=:nisn AND semester BETWEEN 1 AND 5 AND tahun_ajaran=:ta GROUP BY mapel_id");
-                $stRataRapor->execute(['nisn' => $siswa['nisn'], 'ta' => $tahunAjaranAktif]);
+                $stRataRapor = db()->prepare("SELECT mapel_id, AVG(nilai_angka) AS rata_rapor FROM nilai_rapor WHERE nisn=:nisn AND semester BETWEEN 1 AND 5 GROUP BY mapel_id");
+                $stRataRapor->execute(['nisn' => $siswa['nisn']]);
                 $rataRaporByMapel = $stRataRapor->fetchAll(\PDO::FETCH_KEY_PAIR);
 
                 // Ambil nilai UAM siswa
