@@ -66,14 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $semesterPilihan = 5; // Akhir includes semesters 1-5
         }
 
-        // Jika pilih Akhir, hanya ambil siswa yang benar-benar sudah mencapai semester akhir (6).
+        // Hanya ambil siswa yang sedang berada pada semester pilihan.
         $sqlSiswa = "SELECT nisn, nis, nama FROM siswa WHERE status_siswa='Aktif'";
         $paramsSiswa = [];
         if ($isAkhir) {
             $sqlSiswa .= " AND current_semester = 6";
         } else {
-            $sqlSiswa .= " AND current_semester >= :semester_target";
-            $paramsSiswa['semester_target'] = $semesterPilihan;
+            $sqlSiswa .= " AND current_semester = :semester_target";
+            $paramsSiswa['semester_target'] = $semesterInput;
         }
         $sqlSiswa .= " ORDER BY COALESCE(kelas, ''), COALESCE(nomor_absen, 999), nama";
 
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($isAkhir) {
                 set_flash('error', 'Tidak ada siswa aktif di semester Akhir.');
             } else {
-                set_flash('error', 'Tidak ada siswa aktif yang sudah mencapai semester ' . $semesterPilihan . '.');
+                set_flash('error', 'Tidak ada siswa aktif di semester ' . $semesterInput . '.');
             }
             redirect('index.php?page=ekspor-cetak');
         }
@@ -881,15 +881,21 @@ require dirname(__DIR__) . '/partials/header.php';
             <div class="col-md-6">
                 <label class="form-label">Pilih Kelompok Semester</label>
                 <select name="semester_target" class="form-select">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">Akhir</option>
+                    <?php
+                    $semesterAktifSetting = strtoupper(trim($setting['semester_aktif'] ?? 'GANJIL'));
+                    if ($semesterAktifSetting === 'GANJIL'):
+                    ?>
+                        <option value="1">1</option>
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                    <?php else: ?>
+                        <option value="2">2</option>
+                        <option value="4">4</option>
+                        <option value="6">Akhir</option>
+                    <?php endif; ?>
                 </select>
                 <small class="text-secondary d-block mt-2">
-                    Sistem mengekspor nilai dari semester 1 sampai semester yang dipilih.
+                    Sistem akan mengekspor leger siswa aktif di semester terpilih beserta riwayat nilainya dari semester 1.
                 </small>
             </div>
             <div class="col-md-3">
