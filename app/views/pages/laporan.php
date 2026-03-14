@@ -623,7 +623,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                      $qrcode = new \chillerlan\QRCode\QRCode(new \chillerlan\QRCode\QROptions([
                         'version'      => \chillerlan\QRCode\QRCode::VERSION_AUTO,
-                        'outputType'   => \chillerlan\QRCode\QROptions::OUTPUT_IMAGE_PNG,
+                        'outputType'   => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
                         'eccLevel'     => \chillerlan\QRCode\QRCode::ECC_L,
                         'imageBase64'  => false,
                     ]));

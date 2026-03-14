@@ -6,7 +6,7 @@
     "php": ">=7.4",
     "phpoffice/phpspreadsheet": "^1.29",
     "dompdf/dompdf": "^2.0",
-    "chillerlan/php-qrcode": "^5.0"
+    "chillerlan/php-qrcode": "4.3.4"
   },
   "autoload": {
     "files": [
