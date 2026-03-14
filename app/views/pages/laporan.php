@@ -464,7 +464,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Load logo once instead of per-student to reduce IO overhead.
         $logoDataUri = '';
-        $logoPath = dirname(__DIR__, 3) . '/public/assets/logo-kemenag.png';
+        $logoPath = dirname(__DIR__, 3) . '/public/assets/logo-kemenag-small.png';
         if (is_file($logoPath)) {
             $logoBinary = file_get_contents($logoPath);
             if ($logoBinary !== false) {
@@ -862,7 +862,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdfBinary = $dompdf->output();
         header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Disposition: inline; filename="' . $filename . '"');
         header('Content-Length: ' . strlen($pdfBinary));
         echo $pdfBinary;
         exit;
