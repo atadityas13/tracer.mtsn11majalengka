@@ -1369,7 +1369,6 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                                 </table>
                             </div>
                     </div>
-                    </div>
                     <?php endfor; ?>
                     
                     <?php 
