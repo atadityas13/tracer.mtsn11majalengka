@@ -13,5 +13,10 @@
       "app/helpers/common.php",
       "app/middleware/auth.php"
     ]
+  },
+  "config": {
+    "platform": {
+      "php": "7.4.33"
+    }
   }
 }
