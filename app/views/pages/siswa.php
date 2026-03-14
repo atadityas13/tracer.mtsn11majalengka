@@ -788,10 +788,10 @@ $getSortLink = function($column, $label) use ($searchQuery, $kelasFilter, $sortB
     return "<a href=\"$url\" style=\"text-decoration: none; color: inherit; cursor: pointer;\">{$label}{$icon}</a>";
 };
 
-$where = '';
+$where = "WHERE status_siswa != 'Lulus'";
 $params = [];
 if ($searchQuery !== '') {
-    $where = 'WHERE nama LIKE :search1 OR nisn LIKE :search2 OR nis LIKE :search3';
+    $where .= ' AND (nama LIKE :search1 OR nisn LIKE :search2 OR nis LIKE :search3)';
     $searchTerm = '%' . $searchQuery . '%';
     $params['search1'] = $searchTerm;
     $params['search2'] = $searchTerm;
@@ -799,8 +799,7 @@ if ($searchQuery !== '') {
 }
 
 if ($kelasFilter !== '') {
-    $where = ($where === '') ? 'WHERE' : $where . ' AND';
-    $where .= ' kelas = :kelas';
+    $where .= ' AND kelas = :kelas';
     $params['kelas'] = $kelasFilter;
 }
 

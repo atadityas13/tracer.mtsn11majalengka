@@ -44,6 +44,47 @@ if (!$hasNamaColumn) {
 }
 db()->exec("UPDATE alumni a LEFT JOIN siswa s ON s.nisn = a.nisn SET a.nama = s.nama WHERE (a.nama IS NULL OR a.nama='') AND s.nama IS NOT NULL AND s.nama <> ''");
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    enforce_csrf('alumni');
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'batal_individu') {
+        $nisn = trim($_POST['nisn'] ?? '');
+        db()->beginTransaction();
+        try {
+            $stUpdate = db()->prepare("UPDATE siswa SET status_siswa='Aktif', current_semester=6 WHERE nisn=:nisn");
+            $stUpdate->execute(['nisn' => $nisn]);
+            $stDel = db()->prepare("DELETE FROM alumni WHERE nisn=:nisn");
+            $stDel->execute(['nisn' => $nisn]);
+            db()->commit();
+            set_flash('success', 'Kelulusan siswa berhasil dibatalkan. Status dikembalikan ke Aktif.');
+        } catch (Throwable $e) {
+            db()->rollBack();
+            set_flash('error', 'Gagal membatalkan kelulusan: ' . $e->getMessage());
+        }
+        redirect('index.php?page=alumni');
+    }
+
+    if ($action === 'batal_angkatan') {
+        $tahunLulus = trim($_POST['batal_tahun_lulus'] ?? '');
+        if ($tahunLulus !== '') {
+            db()->beginTransaction();
+            try {
+                $stUpdate = db()->prepare("UPDATE siswa s JOIN alumni a ON s.nisn = a.nisn SET s.status_siswa='Aktif', s.current_semester=6 WHERE a.angkatan_lulus=:thn");
+                $stUpdate->execute(['thn' => $tahunLulus]);
+                $stDel = db()->prepare("DELETE FROM alumni WHERE angkatan_lulus=:thn");
+                $stDel->execute(['thn' => $tahunLulus]);
+                db()->commit();
+                set_flash('success', "Kelulusan angkatan {$tahunLulus} berhasil dibatalkan.");
+            } catch (Throwable $e) {
+                db()->rollBack();
+                set_flash('error', 'Gagal membatalkan kelulusan angkatan: ' . $e->getMessage());
+            }
+        }
+        redirect('index.php?page=alumni');
+    }
+}
+
 $filterYear = trim($_GET['tahun_lulus'] ?? '');
 
 $sql = 'SELECT a.nisn, a.nama, a.angkatan_lulus, a.data_ijazah_json
@@ -65,9 +106,14 @@ $years = db()->query('SELECT DISTINCT angkatan_lulus FROM alumni ORDER BY angkat
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white border-0 pt-3">
-        <h3 class="mb-1">Data Alumni</h3>
-        <p class="text-secondary mb-0">Daftar siswa alumni dengan filter tahun lulus.</p>
+    <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="mb-1">Data Alumni</h3>
+            <p class="text-secondary mb-0">Daftar siswa alumni dengan filter tahun lulus.</p>
+        </div>
+        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalBatalAngkatan">
+            Batalkan Kelulusan Angkatan
+        </button>
     </div>
     <div class="card-body">
         <form method="get" class="row g-3 align-items-end mb-2">
@@ -113,15 +159,57 @@ require dirname(__DIR__) . '/partials/header.php';
                             <td><?= e($row['nama'] ?: '-') ?></td>
                             <td><?= e((string) $row['angkatan_lulus']) ?></td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalNilaiAlumni<?= e($row['nisn']) ?>">
-                                    <i class="bi bi-eye me-1"></i>Lihat Nilai
-                                </button>
+                                <div class="d-inline-flex gap-1">
+                                    <form method="post" class="d-inline-block" data-confirm="Yakin ingin membatalkan kelulusan siswa ini? Siswa akan dikembalikan menjadi Aktif di semester 6." data-confirm-title="Batalkan Kelulusan">
+                                        <?= csrf_input('alumni') ?>
+                                        <input type="hidden" name="action" value="batal_individu">
+                                        <input type="hidden" name="nisn" value="<?= e($row['nisn']) ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Batalkan Kelulusan">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalNilaiAlumni<?= e($row['nisn']) ?>" title="Lihat Nilai">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Batal Angkatan -->
+<div class="modal fade" id="modalBatalAngkatan" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form method="post">
+                <?= csrf_input('alumni') ?>
+                <input type="hidden" name="action" value="batal_angkatan">
+                <div class="modal-header">
+                    <h5 class="modal-title">Batalkan Kelulusan Angkatan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger">Tindakan ini akan mengembalikan seluruh alumni pada tahun lulus terkait kembali menjadi Siswa Aktif pada semester 6.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Pilih Tahun Lulus Angkatan</label>
+                        <select name="batal_tahun_lulus" class="form-select" required>
+                            <option value="">- Pilih Tahun -</option>
+                            <?php foreach ($years as $y): ?>
+                                <option value="<?= e((string)$y['angkatan_lulus']) ?>"><?= e((string)$y['angkatan_lulus']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Apakah Anda benar-benar yakin membatalkan kelulusan angkatan ini?');">Proses Pembatalan</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -136,18 +224,25 @@ require dirname(__DIR__) . '/partials/header.php';
         }
     }
 
+    $hasGradeSem = [];
     $nilaiPerSemester = [];
     for ($semester = 1; $semester <= 5; $semester++) {
-        $stmtSemester = db()->prepare('SELECT m.nama_mapel, nr.nilai_angka FROM nilai_rapor nr JOIN mapel m ON m.id = nr.mapel_id WHERE nr.nisn=:nisn AND nr.semester=:semester ORDER BY m.id');
+        $stmtSemester = db()->prepare('SELECT m.nama_mapel, nr.nilai_angka FROM mapel m LEFT JOIN nilai_rapor nr ON m.id = nr.mapel_id AND nr.nisn=:nisn AND nr.semester=:semester ORDER BY m.id');
         $stmtSemester->execute([
             'nisn' => $row['nisn'],
             'semester' => $semester,
         ]);
         $nilaiPerSemester[$semester] = $stmtSemester->fetchAll();
+        
+        $stCek = db()->prepare('SELECT 1 FROM nilai_rapor WHERE nisn=:nisn AND semester=:sem LIMIT 1');
+        $stCek->execute(['nisn' => $row['nisn'], 'sem' => $semester]);
+        $hasGradeSem[$semester] = (bool) $stCek->fetch();
     }
 
     $nilaiUam = [];
+    $hasGradeUam = false;
     if (count($dataIjazah) > 0) {
+        $hasGradeUam = true;
         foreach ($dataIjazah as $item) {
             $nilaiUam[] = [
                 'nama_mapel' => $item['mapel'] ?? '-',
@@ -155,9 +250,13 @@ require dirname(__DIR__) . '/partials/header.php';
             ];
         }
     } else {
-        $stmtUam = db()->prepare('SELECT m.nama_mapel, nu.nilai_angka FROM nilai_uam nu JOIN mapel m ON m.id = nu.mapel_id WHERE nu.nisn=:nisn ORDER BY m.id');
+        $stmtUam = db()->prepare('SELECT m.nama_mapel, nu.nilai_angka FROM mapel m LEFT JOIN nilai_uam nu ON m.id = nu.mapel_id AND nu.nisn=:nisn ORDER BY m.id');
         $stmtUam->execute(['nisn' => $row['nisn']]);
         $nilaiUam = $stmtUam->fetchAll();
+        
+        $stCekUam = db()->prepare('SELECT 1 FROM nilai_uam WHERE nisn=:nisn LIMIT 1');
+        $stCekUam->execute(['nisn' => $row['nisn']]);
+        $hasGradeUam = (bool) $stCekUam->fetch();
     }
 
     $nilaiIjazahRows = [];
@@ -188,11 +287,11 @@ require dirname(__DIR__) . '/partials/header.php';
                     <ul class="nav nav-tabs mb-3" id="tabNilaiAlumni<?= e($row['nisn']) ?>" role="tablist">
                         <?php for ($semester = 1; $semester <= 5; $semester++): ?>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link <?= $semester === 1 ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#alumni-sem<?= $semester ?>-<?= e($row['nisn']) ?>" type="button">Semester <?= $semester ?></button>
+                                <button class="nav-link <?= $semester === 1 ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#alumni-sem<?= $semester ?>-<?= e($row['nisn']) ?>" type="button">Semester <?= $semester ?> <?= !$hasGradeSem[$semester] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                             </li>
                         <?php endfor; ?>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#alumni-uam-<?= e($row['nisn']) ?>" type="button">UM/UAM</button>
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#alumni-uam-<?= e($row['nisn']) ?>" type="button">UM/UAM <?= !$hasGradeUam ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#alumni-ijazah-<?= e($row['nisn']) ?>" type="button">Nilai Ijazah</button>
@@ -204,14 +303,17 @@ require dirname(__DIR__) . '/partials/header.php';
                             <?php $semesterRows = $nilaiPerSemester[$semester] ?? []; ?>
                             <div class="tab-pane fade <?= $semester === 1 ? 'show active' : '' ?>" id="alumni-sem<?= $semester ?>-<?= e($row['nisn']) ?>">
                                 <h6 class="mb-3">Nilai Semester <?= $semester ?></h6>
-                                <?php if (count($semesterRows) === 0): ?>
-                                    <p class="text-secondary text-center mb-0">Data nilai semester tidak tersedia.</p>
-                                <?php else: ?>
+                                <?php if (!$hasGradeSem[$semester]): ?>
+                                    <div class="alert alert-warning py-2 mb-3">Belum ada nilai untuk semester ini.</div>
+                                <?php endif; ?>
                                     <div class="table-wrap">
                                         <table class="table table-sm table-bordered">
                                             <thead>
                                             <tr>
-                                                <th>Mata Pelajaran</th>
+                                                <th rowspan="2" class="align-middle">Mata Pelajaran</th>
+                                                <th colspan="2" class="text-center">Nilai</th>
+                                            </tr>
+                                            <tr>
                                                 <th class="text-center">Angka</th>
                                                 <th class="text-center">Huruf</th>
                                             </tr>
@@ -219,66 +321,89 @@ require dirname(__DIR__) . '/partials/header.php';
                                             <tbody>
                                             <?php
                                             $totalSem = 0.0;
+                                            $jumlahMapel = 0;
                                             foreach ($semesterRows as $semRow):
-                                                $angka = (float) ($semRow['nilai_angka'] ?? 0);
-                                                $totalSem += $angka;
+                                                $angka = $semRow['nilai_angka'] !== null ? (float) $semRow['nilai_angka'] : null;
+                                                if ($angka !== null) {
+                                                    $totalSem += $angka;
+                                                    $jumlahMapel++;
+                                                }
                                                 ?>
                                                 <tr>
                                                     <td><?= e($semRow['nama_mapel']) ?></td>
-                                                    <td class="text-center"><?= e(number_format($angka, 2)) ?></td>
-                                                    <td class="text-center"><?= e(ucwords(terbilang_nilai($angka))) ?></td>
+                                                    <td class="text-center">
+                                                        <input type="text" readonly class="form-control form-control-sm text-center bg-white border-0" style="width: 80px; margin: 0 auto; outline: none; box-shadow: none;" value="<?= $angka !== null ? e(number_format($angka, 0)) : '' ?>" placeholder="00">
+                                                    </td>
+                                                    <td class="text-center"><?= $angka !== null ? e(ucwords(terbilang_bulat((int)$angka))) : '-' ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
-                                            <?php $rataSem = $totalSem / count($semesterRows); ?>
+                                            <?php $rataSem = $jumlahMapel > 0 ? $totalSem / $jumlahMapel : 0; ?>
+                                            <tr class="table-secondary fw-bold">
+                                                <td>Jumlah Nilai</td>
+                                                <td class="text-center"><?= e(number_format($totalSem, 0)) ?></td>
+                                                <td class="text-center"><?= $jumlahMapel > 0 ? e(ucwords(terbilang_bulat((int)$totalSem))) : '-' ?></td>
+                                            </tr>
                                             <tr class="table-secondary fw-bold">
                                                 <td>Rata-Rata</td>
                                                 <td class="text-center"><?= e(number_format($rataSem, 2)) ?></td>
-                                                <td class="text-center"><?= e(ucwords(terbilang_nilai($rataSem))) ?></td>
+                                                <td class="text-center"><?= $jumlahMapel > 0 ? e(ucwords(terbilang_nilai($rataSem))) : '-' ?></td>
                                             </tr>
                                             </tbody>
                                         </table>
                                     </div>
-                                <?php endif; ?>
                             </div>
                         <?php endfor; ?>
 
                         <div class="tab-pane fade" id="alumni-uam-<?= e($row['nisn']) ?>">
                             <h6 class="mb-3">Nilai UM/UAM</h6>
-                            <?php if (count($nilaiUam) === 0): ?>
-                                <p class="text-secondary text-center mb-0">Data nilai UM/UAM tidak tersedia.</p>
-                            <?php else: ?>
+                            <?php if (!$hasGradeUam): ?>
+                                <div class="alert alert-warning py-2 mb-3">Belum ada nilai UM/UAM.</div>
+                            <?php endif; ?>
                                 <div class="table-wrap">
                                     <table class="table table-sm table-bordered">
                                         <thead>
-                                        <tr>
-                                            <th>Mata Pelajaran</th>
-                                            <th class="text-center">Angka</th>
-                                            <th class="text-center">Huruf</th>
-                                        </tr>
+                                            <tr>
+                                                <th rowspan="2" class="align-middle">Mata Pelajaran</th>
+                                                <th colspan="2" class="text-center">Nilai</th>
+                                            </tr>
+                                            <tr>
+                                                <th class="text-center">Angka</th>
+                                                <th class="text-center">Huruf</th>
+                                            </tr>
                                         </thead>
                                         <tbody>
                                         <?php
                                         $totalUam = 0.0;
+                                        $jumlahUam = 0;
                                         foreach ($nilaiUam as $uamRow):
-                                            $angkaUam = (float) ($uamRow['nilai_angka'] ?? 0);
-                                            $totalUam += $angkaUam;
+                                            $angkaUam = $uamRow['nilai_angka'] !== null ? (float) $uamRow['nilai_angka'] : null;
+                                            if ($angkaUam !== null) {
+                                                $totalUam += $angkaUam;
+                                                $jumlahUam++;
+                                            }
                                             ?>
                                             <tr>
                                                 <td><?= e($uamRow['nama_mapel']) ?></td>
-                                                <td class="text-center"><?= e(number_format($angkaUam, 2)) ?></td>
-                                                <td class="text-center"><?= e(ucwords(terbilang_nilai($angkaUam))) ?></td>
+                                                <td class="text-center">
+                                                        <input type="text" readonly class="form-control form-control-sm text-center bg-white border-0" style="width: 80px; margin: 0 auto; outline: none; box-shadow: none;" value="<?= $angkaUam !== null ? e(number_format($angkaUam, 0)) : '' ?>" placeholder="00">
+                                                </td>
+                                                <td class="text-center"><?= $angkaUam !== null ? e(ucwords(terbilang_bulat((int)$angkaUam))) : '-' ?></td>
                                             </tr>
                                         <?php endforeach; ?>
-                                        <?php $rataUam = $totalUam / count($nilaiUam); ?>
+                                        <?php $rataUam = $jumlahUam > 0 ? $totalUam / $jumlahUam : 0; ?>
+                                        <tr class="table-secondary fw-bold">
+                                            <td>Jumlah Nilai</td>
+                                            <td class="text-center"><?= e(number_format($totalUam, 0)) ?></td>
+                                            <td class="text-center"><?= $jumlahUam > 0 ? e(ucwords(terbilang_bulat((int)$totalUam))) : '-' ?></td>
+                                        </tr>
                                         <tr class="table-secondary fw-bold">
                                             <td>Rata-Rata</td>
                                             <td class="text-center"><?= e(number_format($rataUam, 2)) ?></td>
-                                            <td class="text-center"><?= e(ucwords(terbilang_nilai($rataUam))) ?></td>
+                                            <td class="text-center"><?= $jumlahUam > 0 ? e(ucwords(terbilang_nilai($rataUam))) : '-' ?></td>
                                         </tr>
                                         </tbody>
                                     </table>
                                 </div>
-                            <?php endif; ?>
                         </div>
 
                         <div class="tab-pane fade" id="alumni-ijazah-<?= e($row['nisn']) ?>">

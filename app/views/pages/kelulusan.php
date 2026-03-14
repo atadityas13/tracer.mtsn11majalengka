@@ -107,8 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'migra
                 'token' => $verificationToken,
             ]);
 
-            $stmtDelete = db()->prepare('DELETE FROM siswa WHERE nisn=:nisn');
-            $stmtDelete->execute(['nisn' => $s['nisn']]);
+            $stmtUpdate = db()->prepare('UPDATE siswa SET status_siswa=\'Lulus\' WHERE nisn=:nisn');
+            $stmtUpdate->execute(['nisn' => $s['nisn']]);
         }
 
         db()->commit();
