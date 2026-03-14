@@ -606,27 +606,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'ttd_nip' => (string) $nipKepsek,
             ]);
 
-            // Generate token-only verification URL (no mutable metadata in query string).
+            // Generate token-only verification URL (no mutable metadata in query string)
             $verifyUrl = $baseUrl . $verifyPath . '?token=' . urlencode($alumni['verification_token']);
-            $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . urlencode($verifyUrl);
-            $qrCodeSrc = $qrCodeUrl;
-            $qrBinary = false;
+            
             $qrCacheFile = $qrCacheDir . '/' . sha1((string) $alumni['verification_token']) . '.png';
+            $qrCodeSrc = '';
+            
             if (is_file($qrCacheFile)) {
-                $qrBinary = @file_get_contents($qrCacheFile);
-            }
-            if ($qrBinary === false) {
-                $qrContext = stream_context_create([
-                    'http' => ['timeout' => 2],
-                    'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
-                ]);
-                $qrBinary = @file_get_contents($qrCodeUrl, false, $qrContext);
+                $qrBinary = file_get_contents($qrCacheFile);
                 if ($qrBinary !== false) {
-                    @file_put_contents($qrCacheFile, $qrBinary);
+                    $qrCodeSrc = 'data:image/png;base64,' . base64_encode($qrBinary);
                 }
             }
-            if ($qrBinary !== false) {
-                $qrCodeSrc = 'data:image/png;base64,' . base64_encode($qrBinary);
+            
+            if ($qrCodeSrc === '') {
+                try {
+                     $qrcode = new \chillerlan\QRCode\QRCode(new \chillerlan\QRCode\QROptions([
+                        'version'      => \chillerlan\QRCode\QRCode::VERSION_AUTO,
+                        'outputType'   => \chillerlan\QRCode\QROptions::OUTPUT_IMAGE_PNG,
+                        'eccLevel'     => \chillerlan\QRCode\QRCode::ECC_L,
+                        'imageBase64'  => false,
+                    ]));
+                    
+                    $qrBinary = $qrcode->render($verifyUrl);
+                    file_put_contents($qrCacheFile, $qrBinary);
+                    $qrCodeSrc = 'data:image/png;base64,' . base64_encode($qrBinary);
+                } catch (\Throwable $e) {
+                    // Fallback backward compatibility dummy image if QR generation fails
+                    $qrCodeSrc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                }
             }
 
             $nilaiByMapel = [];
@@ -854,7 +862,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdfBinary = $dompdf->output();
         header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="' . $filename . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Content-Length: ' . strlen($pdfBinary));
         echo $pdfBinary;
         exit;

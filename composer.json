@@ -5,7 +5,8 @@
   "require": {
     "php": ">=7.4",
     "phpoffice/phpspreadsheet": "^1.29",
-    "dompdf/dompdf": "^2.0"
+    "dompdf/dompdf": "^2.0",
+    "chillerlan/php-qrcode": "^5.0"
   },
   "autoload": {
     "files": [
