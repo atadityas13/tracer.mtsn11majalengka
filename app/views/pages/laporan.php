@@ -856,15 +856,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filename = $safeName . '.pdf';
         }
 
+        // Generate random string in filename to prevent guessing
+        $randomHash = substr(str_shuffle('0123456789abcdefghijklmnopqrstuvwxyz'), 0, 8);
+        $filename = str_replace('.pdf', '_' . $randomHash . '.pdf', $filename);
+
         $dompdf->loadHtml($allHtml);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
-
         $pdfBinary = $dompdf->output();
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="' . $filename . '"');
-        header('Content-Length: ' . strlen($pdfBinary));
-        echo $pdfBinary;
+
+        // Save PDF temporarily in public/temp_pdf folder
+        $tempDir = dirname(__DIR__, 3) . '/public/temp_pdf';
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0775, true);
+        }
+
+        // Cleanup files older than 1 hour in temp_pdf folder to save space
+        $tempFiles = (array) glob($tempDir . '/*.pdf');
+        $now = time();
+        foreach ($tempFiles as $f) {
+            if (is_file($f) && ($now - filemtime($f) > 3600)) {
+                @unlink($f);
+            }
+        }
+
+        $pdfPath = $tempDir . '/' . $filename;
+        file_put_contents($pdfPath, $pdfBinary);
+
+        // Redirect browser to the physical PDF file
+        header('Location: temp_pdf/' . rawurlencode($filename));
         exit;
     }
 }
