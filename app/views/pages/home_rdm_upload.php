@@ -391,7 +391,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $placeholdersPreview = implode(',', array_fill(0, count($nisnListPreview), '?'));
-        $sqlNilaiSudahAda = "SELECT DISTINCT nisn FROM nilai_rapor WHERE tahun_ajaran = ? AND nisn IN ({$placeholdersPreview})";
+        $sqlNilaiSudahAda = "SELECT DISTINCT nr.nisn FROM nilai_rapor nr 
+                             JOIN siswa s ON nr.nisn = s.nisn 
+                             WHERE nr.tahun_ajaran = ? AND nr.semester = s.current_semester AND nr.nisn IN ({$placeholdersPreview})";
         $stNilaiSudahAda = db()->prepare($sqlNilaiSudahAda);
         $stNilaiSudahAda->execute(array_merge([(string) $setting['tahun_ajaran']], $nisnListPreview));
         $sudahAdaRows = $stNilaiSudahAda->fetchAll();
@@ -689,7 +691,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $placeholdersNilaiCek = implode(',', array_fill(0, count($nisnList), '?'));
-    $sqlNilaiSudahAda = "SELECT DISTINCT nisn FROM nilai_rapor WHERE tahun_ajaran = ? AND nisn IN ({$placeholdersNilaiCek})";
+    $sqlNilaiSudahAda = "SELECT DISTINCT nr.nisn FROM nilai_rapor nr 
+                         JOIN siswa s ON nr.nisn = s.nisn 
+                         WHERE nr.tahun_ajaran = ? AND nr.semester = s.current_semester AND nr.nisn IN ({$placeholdersNilaiCek})";
     $stNilaiSudahAda = db()->prepare($sqlNilaiSudahAda);
     $stNilaiSudahAda->execute(array_merge([(string) $setting['tahun_ajaran']], array_values($nisnList)));
     $nisnSudahAdaRows = $stNilaiSudahAda->fetchAll();

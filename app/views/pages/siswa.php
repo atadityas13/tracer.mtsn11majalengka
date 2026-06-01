@@ -1435,6 +1435,7 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                                     </tbody>
                                 </table>
                             </div>
+                    </div>
                     <?php
                         $stIjazah = db()->prepare('SELECT m.id AS mapel_id, m.nama_mapel,
                             (SELECT AVG(nr.nilai_angka)

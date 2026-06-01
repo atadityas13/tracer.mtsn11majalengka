@@ -336,7 +336,7 @@ if (!function_exists('download_template_excel')) {
             [''],
             ['Catatan Semester:'],
             ['- Import Rapor: otomatis mengikuti current semester siswa pada semester aktif.'],
-            ['- Import UAM: diproses untuk siswa semester Akhir saat semester aktif GENAP.'],
+            ['- Import Nilai Asesmen Madrasah: diproses untuk siswa semester Akhir saat semester aktif GENAP.'],
         ], null, 'A1');
         $guideSheet->getColumnDimension('A')->setWidth(140);
 
@@ -447,7 +447,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stDeleteUam = db()->prepare('DELETE FROM nilai_uam WHERE nisn=:nisn');
             $stDeleteUam->execute(['nisn' => $nisn]);
             $deleted = $stDeleteUam->rowCount();
-            set_flash('success', 'Nilai UAM berhasil dikosongkan. Total data dihapus: ' . $deleted . '.');
+            set_flash('success', 'Nilai Asesmen Madrasah berhasil dikosongkan. Total data dihapus: ' . $deleted . '.');
             redirect('index.php?page=data-nilai&semester_view=UAM');
         }
 
@@ -1411,7 +1411,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <div class="col-md-2">
                 <select name="semester_view" class="form-select form-select-sm">
                     <?php foreach ($monitorSemesterOptions as $semOpt): ?>
-                        <option value="<?= e($semOpt) ?>" <?= $monitorSemester === $semOpt ? 'selected' : '' ?>>Semester <?= e($semOpt) ?></option>
+                        <option value="<?= e($semOpt) ?>" <?= $monitorSemester === $semOpt ? 'selected' : '' ?>><?= $semOpt === 'UAM' ? 'Nilai Asesmen Madrasah' : 'Semester ' . e($semOpt) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -1655,7 +1655,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="text-secondary mb-3">Download template lalu upload file nilai rapor/UAM dari form berikut.</p>
+                <p class="text-secondary mb-3">Download template lalu upload file nilai rapor / Asesmen Madrasah dari form berikut.</p>
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
@@ -1669,7 +1669,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         <form method="post">
                             <?= csrf_input() ?>
                             <input type="hidden" name="action" value="download_template_uam">
-                            <button type="submit" class="btn btn-outline-primary w-100">Download Template UAM</button>
+                            <button type="submit" class="btn btn-outline-primary w-100">Download Template Asesmen Madrasah</button>
                         </form>
                     </div>
                 </div>
@@ -1694,7 +1694,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 <?php if ($semesterAktif === 'GENAP'): ?>
                     <div class="card border-0 bg-light">
                         <div class="card-body">
-                            <h6 class="mb-2">Import Excel Nilai UAM (Semester Akhir)</h6>
+                            <h6 class="mb-2">Import Excel Nilai Asesmen Madrasah</h6>
                             <form method="post" enctype="multipart/form-data" class="row g-3">
                                 <?= csrf_input() ?>
                                 <input type="hidden" name="action" value="import_uam">
@@ -1703,7 +1703,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                     <input type="file" class="form-control" name="file_excel" accept=".xlsx,.xls" required>
                                 </div>
                                 <div class="col-md-4 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-primary w-100">Import UAM</button>
+                                    <button type="submit" class="btn btn-primary w-100">Import Nilai Asesmen Madrasah</button>
                                 </div>
                             </form>
                         </div>
