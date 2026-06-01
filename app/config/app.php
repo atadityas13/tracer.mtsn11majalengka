@@ -10,6 +10,6 @@ return [
     ],
     'semester' => [
         'GANJIL' => [1, 3, 5],
-        'GENAP' => [2, 4],
+        'GENAP' => [2, 4, 6],
     ],
 ];

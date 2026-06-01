@@ -226,7 +226,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
     $hasGradeSem = [];
     $nilaiPerSemester = [];
-    for ($semester = 1; $semester <= 5; $semester++) {
+    for ($semester = 1; $semester <= 6; $semester++) {
         $stmtSemester = db()->prepare('SELECT m.nama_mapel, nr.nilai_angka FROM mapel m LEFT JOIN nilai_rapor nr ON m.id = nr.mapel_id AND nr.nisn=:nisn AND nr.semester=:semester ORDER BY m.id');
         $stmtSemester->execute([
             'nisn' => $row['nisn'],
@@ -285,13 +285,13 @@ require dirname(__DIR__) . '/partials/header.php';
                 </div>
                 <div class="modal-body">
                     <ul class="nav nav-tabs mb-3" id="tabNilaiAlumni<?= e($row['nisn']) ?>" role="tablist">
-                        <?php for ($semester = 1; $semester <= 5; $semester++): ?>
+                        <?php for ($semester = 1; $semester <= 6; $semester++): ?>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link <?= $semester === 1 ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#alumni-sem<?= $semester ?>-<?= e($row['nisn']) ?>" type="button">Semester <?= $semester ?> <?= !$hasGradeSem[$semester] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                             </li>
                         <?php endfor; ?>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#alumni-uam-<?= e($row['nisn']) ?>" type="button">UM/UAM <?= !$hasGradeUam ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#alumni-uam-<?= e($row['nisn']) ?>" type="button">AM <?= !$hasGradeUam ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#alumni-ijazah-<?= e($row['nisn']) ?>" type="button">Nilai Ijazah</button>
@@ -299,7 +299,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     </ul>
 
                     <div class="tab-content">
-                        <?php for ($semester = 1; $semester <= 5; $semester++): ?>
+                        <?php for ($semester = 1; $semester <= 6; $semester++): ?>
                             <?php $semesterRows = $nilaiPerSemester[$semester] ?? []; ?>
                             <div class="tab-pane fade <?= $semester === 1 ? 'show active' : '' ?>" id="alumni-sem<?= $semester ?>-<?= e($row['nisn']) ?>">
                                 <h6 class="mb-3">Nilai Semester <?= $semester ?></h6>
@@ -355,9 +355,9 @@ require dirname(__DIR__) . '/partials/header.php';
                         <?php endfor; ?>
 
                         <div class="tab-pane fade" id="alumni-uam-<?= e($row['nisn']) ?>">
-                            <h6 class="mb-3">Nilai UM/UAM</h6>
+                            <h6 class="mb-3">Nilai Asesmen Madrasah (AM)</h6>
                             <?php if (!$hasGradeUam): ?>
-                                <div class="alert alert-warning py-2 mb-3">Belum ada nilai UM/UAM.</div>
+                                <div class="alert alert-warning py-2 mb-3">Belum ada nilai AM.</div>
                             <?php endif; ?>
                                 <div class="table-wrap">
                                     <table class="table table-sm table-bordered">
@@ -407,7 +407,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         </div>
 
                         <div class="tab-pane fade" id="alumni-ijazah-<?= e($row['nisn']) ?>">
-                            <h6 class="mb-3">Nilai Ijazah (Rumus: 60% Rata-Rata Rapor + 40% UM/UAM)</h6>
+                            <h6 class="mb-3">Nilai Ijazah (Rumus: 60% Rata-Rata Rapor + 40% AM)</h6>
                             <?php if (count($nilaiIjazahRows) === 0): ?>
                                 <p class="text-secondary text-center mb-0">Data nilai ijazah tidak tersedia.</p>
                             <?php else: ?>
@@ -417,7 +417,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                         <tr>
                                             <th>Mata Pelajaran</th>
                                             <th class="text-center">Rata Rapor</th>
-                                            <th class="text-center">UM/UAM</th>
+                                            <th class="text-center">AM</th>
                                             <th class="text-center">Nilai Ijazah</th>
                                             <th class="text-center">Huruf</th>
                                         </tr>

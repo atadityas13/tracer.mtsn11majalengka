@@ -172,7 +172,7 @@ if (!function_exists('semester_upload_target')) {
             return [1, 3, 5];
         }
 
-        return [2, 4];
+        return [2, 4, 6];
     }
 }
 
@@ -200,7 +200,7 @@ if (!function_exists('current_semester_label')) {
     function current_semester_label($value): string
     {
         $semester = normalize_current_semester($value);
-        return $semester === 6 ? 'Akhir' : (string) $semester;
+        return (string) $semester;
     }
 }
 

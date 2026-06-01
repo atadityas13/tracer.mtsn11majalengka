@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isAkhir = false;
         }
         if ($isAkhir) {
-            $semesterPilihan = 5; // Akhir includes semesters 1-5
+            $semesterPilihan = 6; // Akhir includes semesters 1-6
         }
 
         // Hanya ambil siswa yang sedang berada pada semester pilihan.
@@ -283,10 +283,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Tambahkan sheet UAM jika Akhir dipilih
+        // Tambahkan sheet AM jika Akhir dipilih
         if ($isAkhir) {
             $sheetUam = $sheet->createSheet();
-            $sheetUam->setTitle('UAM (Akhir)');
+            $sheetUam->setTitle('AM (Akhir)');
 
             // BARIS 1 & 2: Merge cells vertikal untuk kolom info siswa (A-E)
             $sheetUam->mergeCells('A1:A2');
@@ -305,9 +305,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $totalCols = 5 + $numMapel + 4; // 5 info cols + mapel + (Jumlah, Rata-rata, Rank Kelas, Rank Angkatan)
             $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
 
-            // BARIS 1: Merge horizontal untuk judul "NILAI UAM (AKHIR)"
+            // BARIS 1: Merge horizontal untuk judul "NILAI AM (AKHIR)"
             $sheetUam->mergeCells('F1:' . $lastCol . '1');
-            $sheetUam->setCellValue('F1', 'NILAI UAM (AKHIR)');
+            $sheetUam->setCellValue('F1', 'NILAI AM (AKHIR)');
             
             // BARIS 2: Header kolom untuk mata pelajaran (mulai dari F2)
             $colIndex = 6; // F = 6
@@ -542,8 +542,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Pra-proses pengumpulan nilai ijazah dan ranking
             foreach ($angkatanSiswa as $siswa) {
 
-                // Ambil rata-rata nilai rapor semester 1-5 per mapel
-                $stRataRapor = db()->prepare("SELECT mapel_id, AVG(nilai_angka) AS rata_rapor FROM nilai_rapor WHERE nisn=:nisn AND semester BETWEEN 1 AND 5 GROUP BY mapel_id");
+                // Ambil rata-rata nilai rapor semester 1-6 per mapel
+                $stRataRapor = db()->prepare("SELECT mapel_id, AVG(nilai_angka) AS rata_rapor FROM nilai_rapor WHERE nisn=:nisn AND semester BETWEEN 1 AND 6 GROUP BY mapel_id");
                 $stRataRapor->execute(['nisn' => $siswa['nisn']]);
                 $rataRaporByMapel = $stRataRapor->fetchAll(\PDO::FETCH_KEY_PAIR);
 
@@ -1082,12 +1082,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </tr>
                         <tr>
                             <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 72px;">Rapor<br>
-                                <span style="font-size: 8px; font-weight: normal;">(Rata-rata<br>Semester 1-5)</span></th>
-                            <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">UAM<br>
-                                <span style="font-size: 8px; font-weight: normal;">(Ujian Akhir Madrasah)</span></th>
+                                <span style="font-size: 8px; font-weight: normal;">(Rata-rata<br>Semester 1-6)</span></th>
+                            <th style="padding: 4px; border: 1px solid #000; text-align: center; width: 65px;">AM<br>
+                                <span style="font-size: 8px; font-weight: normal;">(Asesmen Madrasah)</span></th>
                             <th style="padding: 3px 2px; border: 1px solid #000; text-align: center; width: 90px;">
                                 Ijazah<br>
-                                <span style="font-size: 8px; font-weight: normal;">(60% Rapor+40% UAM)</span>
+                                <span style="font-size: 8px; font-weight: normal;">(60% Rapor+40% AM)</span>
                             </th>
                         </tr>
                     </thead>
@@ -1204,7 +1204,7 @@ require dirname(__DIR__) . '/partials/header.php';
                     <?php else: ?>
                         <option value="2">2</option>
                         <option value="4">4</option>
-                        <option value="6">Akhir</option>
+                        <option value="6">6</option>
                     <?php endif; ?>
                 </select>
                 <small class="text-secondary d-block mt-2">

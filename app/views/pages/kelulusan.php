@@ -21,8 +21,8 @@
  * 
  * Features:
  * - Migrasi siswa dari aktif ke alumni
- * - Eligibility check: current_semester = 6 (Akhir)
- * - Perhitungan nilai ijazah: 60% rata-rata (sem 1-5) + 40% UAM
+ * - Eligibility check: current_semester = 6
+ * - Perhitungan nilai ijazah: 60% rata-rata (sem 1-6) + 40% AM
  * - Simpan data ijazah per mapel dalam JSON format
  * - Preservasi nama siswa di tabel alumni
  * - Auto ALTER TABLE untuk schema compatibility
@@ -48,8 +48,8 @@ $eligibleSql = "SELECT s.nisn, s.nama
 FROM siswa s
 WHERE s.status_siswa='Aktif' AND s.current_semester = 6
 AND (
-    SELECT COUNT(DISTINCT nr.semester) FROM nilai_rapor nr WHERE nr.nisn=s.nisn AND nr.semester BETWEEN 1 AND 5
-) = 5
+    SELECT COUNT(DISTINCT nr.semester) FROM nilai_rapor nr WHERE nr.nisn=s.nisn AND nr.semester BETWEEN 1 AND 6
+) = 6
 AND EXISTS (SELECT 1 FROM nilai_uam nu WHERE nu.nisn=s.nisn)";
 $eligible = db()->query($eligibleSql)->fetchAll();
 
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'migra
 
             $detail = [];
             foreach ($mapel as $m) {
-                $stR = db()->prepare('SELECT AVG(nilai_angka) rata FROM nilai_rapor WHERE nisn=:nisn AND mapel_id=:mapel AND semester BETWEEN 1 AND 5');
+                $stR = db()->prepare('SELECT AVG(nilai_angka) rata FROM nilai_rapor WHERE nisn=:nisn AND mapel_id=:mapel AND semester BETWEEN 1 AND 6');
                 $stR->execute(['nisn' => $s['nisn'], 'mapel' => $m['id']]);
                 $rata = (float) ($stR->fetch()['rata'] ?? 0);
 
@@ -128,7 +128,7 @@ require dirname(__DIR__) . '/partials/header.php';
         <h3 class="mb-0">Migrasi Kelulusan ke Alumni</h3>
     </div>
     <div class="card-body">
-        <div class="alert alert-info border mb-3">Syarat: siswa aktif semester Akhir, nilai rapor lengkap semester 1-5, dan memiliki nilai UAM.</div>
+        <div class="alert alert-info border mb-3">Syarat: siswa aktif semester 6, nilai rapor lengkap semester 1-6, dan memiliki nilai AM.</div>
         <form method="post" class="row g-3 align-items-end" data-confirm="Proses migrasi kelulusan sekarang? Data siswa eligible akan dipindah ke alumni." data-confirm-title="Konfirmasi Migrasi">
             <?= csrf_input() ?>
             <input type="hidden" name="action" value="migrate">

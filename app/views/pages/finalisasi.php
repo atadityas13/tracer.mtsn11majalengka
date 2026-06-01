@@ -99,8 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $sqlNaik = "UPDATE siswa
                         SET current_semester = CASE
-                            WHEN current_semester < 5 THEN current_semester + 1
-                            WHEN current_semester = 5 THEN 6
+                            WHEN current_semester < 6 THEN current_semester + 1
                             ELSE current_semester
                         END
                         WHERE status_siswa = 'Aktif'
@@ -217,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=finalisasi');
         }
 
-        $semesterNaik = $semesterTarget < 5 ? ($semesterTarget + 1) : 6;
+        $semesterNaik = $semesterTarget < 6 ? ($semesterTarget + 1) : 6;
 
         db()->beginTransaction();
         try {
@@ -344,7 +343,7 @@ require dirname(__DIR__) . '/partials/header.php';
                 <?php if (strtoupper($setting['semester_aktif']) === 'GANJIL'): ?>
                     GANJIL: 1, 3, 5
                 <?php else: ?>
-                    GENAP: 2, 4
+                    GENAP: 2, 4, 6
                 <?php endif; ?>
             </strong>
         </div>

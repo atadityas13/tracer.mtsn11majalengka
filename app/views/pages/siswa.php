@@ -1063,7 +1063,7 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                         <div class="col-md-2">
                             <label class="form-label">Current Semester</label>
                             <select name="current_semester" class="form-select">
-                                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">Akhir</option>
+                                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -1225,7 +1225,7 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                                 <option value="3" <?= normalize_current_semester($s['current_semester']) === 3 ? 'selected' : '' ?>>3</option>
                                 <option value="4" <?= normalize_current_semester($s['current_semester']) === 4 ? 'selected' : '' ?>>4</option>
                                 <option value="5" <?= normalize_current_semester($s['current_semester']) === 5 ? 'selected' : '' ?>>5</option>
-                                <option value="6" <?= normalize_current_semester($s['current_semester']) === 6 ? 'selected' : '' ?>>Akhir</option>
+                                <option value="6" <?= normalize_current_semester($s['current_semester']) === 6 ? 'selected' : '' ?>>6</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -1259,7 +1259,7 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                     <?php 
                         // Cek status isi per semester
                         $hasGradeSem = [];
-                        for ($sem=1; $sem<=5; $sem++) {
+                        for ($sem=1; $sem<=6; $sem++) {
                             $stCek = db()->prepare('SELECT 1 FROM nilai_rapor WHERE nisn=:nisn AND semester=:sem LIMIT 1');
                             $stCek->execute(['nisn' => $s['nisn'], 'sem' => $sem]);
                             $hasGradeSem[$sem] = (bool) $stCek->fetch();
@@ -1285,14 +1285,17 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                         <button class="nav-link" id="tab-sem5-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem5-<?= e($s['nisn']) ?>" type="button">Semester 5 <?= !$hasGradeSem[5] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-uam-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#uam-<?= e($s['nisn']) ?>" type="button">UAM <?= !$hasGradeUam ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
+                        <button class="nav-link" id="tab-sem6-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#sem6-<?= e($s['nisn']) ?>" type="button">Semester 6 <?= !$hasGradeSem[6] ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-uam-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#uam-<?= e($s['nisn']) ?>" type="button">AM <?= !$hasGradeUam ? '<span class="badge bg-danger ms-1">Kosong</span>' : '' ?></button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-ijazah-<?= e($s['nisn']) ?>" data-bs-toggle="tab" data-bs-target="#ijazah-<?= e($s['nisn']) ?>" type="button">Nilai Ijazah</button>
                     </li>
                 </ul>
                 <div class="tab-content" id="tabContent<?= e($s['nisn']) ?>">
-                    <?php for ($sem = 1; $sem <= 5; $sem++): 
+                    <?php for ($sem = 1; $sem <= 6; $sem++): 
                     // Ambil semua mapel dari master mapel, lalu joinkan dengan nilai rapor jika ada
                     $stNilai = db()->prepare('
                         SELECT m.id AS mapel_id, m.nama_mapel, 
@@ -1393,9 +1396,9 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                         $rataRataUam = $jumlahMapelUam > 0 ? $totalNilaiUam / $jumlahMapelUam : 0;
                     ?>
                     <div class="tab-pane fade" id="uam-<?= e($s['nisn']) ?>">
-                        <h6 class="mb-3">Ujian Akhir Madrasah (UAM)</h6>
+                        <h6 class="mb-3">Asesmen Madrasah (AM)</h6>
                         <?php if (!$hasGradeUam): ?>
-                            <div class="alert alert-warning py-2 mb-3">Belum ada nilai UAM. Silakan input nilai di bawah.</div>
+                            <div class="alert alert-warning py-2 mb-3">Belum ada nilai AM. Silakan input nilai di bawah.</div>
                         <?php endif; ?>
                             <div class="table-wrap">
                                 <table class="table table-sm table-bordered">
@@ -1432,17 +1435,15 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                                     </tbody>
                                 </table>
                             </div>
-                    </div>
-
                     <?php
                         $stIjazah = db()->prepare('SELECT m.id AS mapel_id, m.nama_mapel,
                             (SELECT AVG(nr.nilai_angka)
-                            FROM nilai_rapor nr
-                            WHERE nr.nisn=:nisn_rapor AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 5) AS rata_rapor,
+                             FROM nilai_rapor nr
+                             WHERE nr.nisn=:nisn_rapor AND nr.mapel_id=m.id AND nr.semester BETWEEN 1 AND 6) AS rata_rapor,
                             (SELECT nu.nilai_angka
-                            FROM nilai_uam nu
-                            WHERE nu.nisn=:nisn_uam AND nu.mapel_id=m.id
-                            LIMIT 1) AS nilai_uam
+                             FROM nilai_uam nu
+                             WHERE nu.nisn=:nisn_uam AND nu.mapel_id=m.id
+                             LIMIT 1) AS nilai_uam
                             FROM mapel m
                             ORDER BY m.id');
                         $stIjazah->execute([
@@ -1473,15 +1474,15 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                         $rataIjazahAkhir = count($ijazahShownRows) > 0 ? ($totalNilaiIjazah / count($ijazahShownRows)) : 0;
                     ?>
                     <div class="tab-pane fade" id="ijazah-<?= e($s['nisn']) ?>">
-                        <h6 class="mb-3">Nilai Ijazah (Rata Rapor 1-5 x 60% + UAM x 40%)</h6>
+                        <h6 class="mb-3">Nilai Ijazah (Rata Rapor 1-6 x 60% + AM x 40%)</h6>
                         <?php if (count($ijazahShownRows) > 0): ?>
                             <div class="table-wrap">
                                 <table class="table table-sm table-bordered">
                                     <thead>
                                         <tr>
                                             <th>Mata Pelajaran</th>
-                                            <th class="text-center">Rata Rapor (1-5)</th>
-                                            <th class="text-center">UAM</th>
+                                            <th class="text-center">Rata Rapor (1-6)</th>
+                                            <th class="text-center">AM</th>
                                             <th class="text-center">Nilai Ijazah</th>
                                             <th class="text-center">Terbilang</th>
                                         </tr>
@@ -1506,7 +1507,7 @@ if (is_array($siswa_preview) && !empty($siswa_preview['entries'])):
                                 </table>
                             </div>
                         <?php else: ?>
-                            <p class="text-secondary text-center">Belum ada data cukup untuk menghitung nilai ijazah (butuh rapor semester 1-5 dan nilai UAM per mapel).</p>
+                            <p class="text-secondary text-center">Belum ada data cukup untuk menghitung nilai ijazah (butuh rapor semester 1-6 dan nilai AM per mapel).</p>
                         <?php endif; ?>
                     </div>
                 </div>

@@ -669,7 +669,7 @@ $logoExists = is_file(__DIR__ . '/assets/logo-kemenag.png');
                             </tr>
                             <tr>
                                 <th style="width: 120px;">Rapor</th>
-                                <th style="width: 90px;">UAM</th>
+                                <th style="width: 90px;">AM</th>
                                 <th style="width: 90px;">Ijazah</th>
                             </tr>
                         </thead>
