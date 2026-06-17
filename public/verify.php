@@ -395,27 +395,93 @@ $findMapel = static function (array $rowsMapel, array $keywords) use ($normalize
     return null;
 };
 
-$layoutRows = [
-    ['type' => 'group', 'label' => 'Kelompok A'],
-    ['type' => 'parent', 'no' => '1', 'label' => 'Pendidikan Agama Islam'],
-    ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Al Qur\'an Hadis', 'keywords' => ['alquranhadis', 'quranhadis']],
-    ['type' => 'item', 'no' => '', 'prefix' => 'B.', 'label' => 'Akidah Akhlak', 'keywords' => ['akidahakhlak']],
-    ['type' => 'item', 'no' => '', 'prefix' => 'C.', 'label' => 'Fikih', 'keywords' => ['fikih', 'fiqih']],
-    ['type' => 'item', 'no' => '', 'prefix' => 'D.', 'label' => 'Sejarah Kebudayaan Islam', 'keywords' => ['sejarahkebudayaanislam', 'ski']],
-    ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Pancasila dan Kewarganegaraan', 'keywords' => ['pancasila', 'kewarganegaraan', 'ppkn']],
-    ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Bahasa Indonesia', 'keywords' => ['bahasaindonesia']],
-    ['type' => 'item', 'no' => '4', 'prefix' => '', 'label' => 'Bahasa Arab', 'keywords' => ['bahasaarab']],
-    ['type' => 'item', 'no' => '5', 'prefix' => '', 'label' => 'Matematika', 'keywords' => ['matematika', 'mtk']],
-    ['type' => 'item', 'no' => '6', 'prefix' => '', 'label' => 'Ilmu Pengetahuan Alam', 'keywords' => ['ilmupengetahuanalam', 'ipa']],
-    ['type' => 'item', 'no' => '7', 'prefix' => '', 'label' => 'Ilmu Pengetahuan Sosial', 'keywords' => ['ilmupengetahuansosial', 'ips']],
-    ['type' => 'item', 'no' => '8', 'prefix' => '', 'label' => 'Bahasa Inggris', 'keywords' => ['bahasainggris', 'inggris']],
-    ['type' => 'group', 'label' => 'Kelompok B'],
-    ['type' => 'item', 'no' => '1', 'prefix' => '', 'label' => 'Seni Budaya', 'keywords' => ['senibudaya']],
-    ['type' => 'item', 'no' => '2', 'prefix' => '', 'label' => 'Pendidikan Jasmani, Olahraga dan Kesehatan', 'keywords' => ['pendidikanjasmaniolahragadankesehatan', 'pendidikanjasmani', 'pjok', 'penjaskes', 'penjasorkes', 'penjas', 'olahragadankesehatan', 'jasmaniolahraga']],
-    ['type' => 'item', 'no' => '3', 'prefix' => '', 'label' => 'Prakarya dan/atau Informatika', 'keywords' => ['prakarya', 'informatika']],
-    ['type' => 'parent', 'no' => '4', 'label' => 'Muatan Lokal'],
-    ['type' => 'item', 'no' => '', 'prefix' => 'A.', 'label' => 'Bahasa Daerah', 'keywords' => ['bahasadaerah']],
-];
+// Ambil data mapel langsung dari database untuk menyusun transkrip secara dinamis
+$dbMapelList = db()->query("SELECT nama_mapel, kelompok, is_sub_pai FROM mapel ORDER BY kelompok, urutan, id")->fetchAll();
+
+$layoutRows = [];
+
+// Kelompok A
+$layoutRows[] = ['type' => 'group', 'label' => 'Kelompok A'];
+
+// Cek apakah ada Sub PAI
+$paiMapels = [];
+$nonPaiA = [];
+foreach ($dbMapelList as $dm) {
+    if ($dm['kelompok'] === 'A') {
+        if ((int)$dm['is_sub_pai'] === 1) {
+            $paiMapels[] = $dm;
+        } else {
+            $nonPaiA[] = $dm;
+        }
+    }
+}
+
+$noA = 1;
+if (count($paiMapels) > 0) {
+    $layoutRows[] = ['type' => 'parent', 'no' => (string)$noA++, 'label' => 'Pendidikan Agama Islam'];
+    $subPaiChars = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    foreach ($paiMapels as $idxSub => $pm) {
+        $pref = ($subPaiChars[$idxSub] ?? '?') . '.';
+        $layoutRows[] = [
+            'type' => 'item',
+            'no' => '',
+            'prefix' => $pref,
+            'label' => $pm['nama_mapel'],
+            'keywords' => [$normalizeMapel($pm['nama_mapel'])]
+        ];
+    }
+}
+
+foreach ($nonPaiA as $npa) {
+    $layoutRows[] = [
+        'type' => 'item',
+        'no' => (string)$noA++,
+        'prefix' => '',
+        'label' => $npa['nama_mapel'],
+        'keywords' => [$normalizeMapel($npa['nama_mapel'])]
+    ];
+}
+
+// Kelompok B
+$mapelsB = [];
+$mulokB = [];
+foreach ($dbMapelList as $dm) {
+    if ($dm['kelompok'] === 'B') {
+        $nameNorm = $normalizeMapel($dm['nama_mapel']);
+        if (strpos($nameNorm, 'muatanlokal') !== false || strpos($nameNorm, 'bahasadaerah') !== false || strpos($nameNorm, 'bahasasunda') !== false) {
+            $mulokB[] = $dm;
+        } else {
+            $mapelsB[] = $dm;
+        }
+    }
+}
+
+$layoutRows[] = ['type' => 'group', 'label' => 'Kelompok B'];
+$noB = 1;
+foreach ($mapelsB as $mb) {
+    $layoutRows[] = [
+        'type' => 'item',
+        'no' => (string)$noB++,
+        'prefix' => '',
+        'label' => $mb['nama_mapel'],
+        'keywords' => [$normalizeMapel($mb['nama_mapel'])]
+    ];
+}
+
+if (count($mulokB) > 0) {
+    $layoutRows[] = ['type' => 'parent', 'no' => (string)$noB++, 'label' => 'Muatan Lokal'];
+    $subMulokChars = ['A', 'B', 'C', 'D', 'E'];
+    foreach ($mulokB as $idxMul => $ml) {
+        $pref = ($subMulokChars[$idxMul] ?? '?') . '.';
+        $layoutRows[] = [
+            'type' => 'item',
+            'no' => '',
+            'prefix' => $pref,
+            'label' => $ml['nama_mapel'],
+            'keywords' => [$normalizeMapel($ml['nama_mapel'])]
+        ];
+    }
+}
 
 $rowsTabel = [];
 $sumRapor = 0.0;

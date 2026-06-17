@@ -327,7 +327,7 @@ if (!function_exists('download_template_excel')) {
             ['3. Kolom Kelas dan Nomor Absen opsional - jika diisi akan update data siswa.'],
             ['4. Isi nilai pada kolom mapel dengan rentang 70-100.'],
             ['5. Biarkan kosong jika nilai mapel belum tersedia.'],
-            ['6. Nilai akan dipetakan otomatis berdasarkan header mapel (QH, AA, FIK, SKI, BAR, PP, BINDO, MTK, IPA, IPS, BING, PJOK, INFO, SBP, BSD).'],
+            ['6. Nilai akan dipetakan otomatis berdasarkan header mapel (QH, AA, FIK, SKI, BAR, PP, BINDO, MTK, IPA, IPS, BING, PJOK, INFO, SBP, BSD, KKA).'],
             ['7. NISN harus sesuai data siswa aktif di aplikasi.'],
             ['8. Simpan file dalam format .xlsx sebelum upload.'],
             [''],
@@ -386,6 +386,8 @@ $aliasToMapelName = [
     'SENBUD' => 'SENI BUDAYA',
     'BSD' => 'BAHASA DAERAH',
     'BAHASA DAERAH' => 'BAHASA DAERAH',
+    'KKA' => 'KODING DAN KECERDASAN ARTIFISIAL',
+    'KODING KECERDASAN ARTIFISIAL' => 'KODING DAN KECERDASAN ARTIFISIAL',
 ];
 
 $aliasToMapelId = [];
@@ -419,7 +421,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php?page=data-nilai');
         }
 
-        $headers = ['No', 'NIS', 'NISN', 'Nama', 'JK', 'Kelas', 'Nomor Absen', 'QH', 'AA', 'FIK', 'SKI', 'BAR', 'PP', 'BINDO', 'MTK', 'IPA', 'IPS', 'BING', 'PJOK', 'INFO', 'SBP', 'BSD'];
+        // Ambil daftar nama mapel dari database secara dinamis
+        $dbMapels = db()->query('SELECT nama_mapel FROM mapel ORDER BY urutan, id')->fetchAll(PDO::FETCH_COLUMN);
+
+        $headers = array_merge(
+            ['No', 'NIS', 'NISN', 'Nama', 'JK', 'Kelas', 'Nomor Absen'],
+            $dbMapels
+        );
 
         if ($action === 'download_template_rapor') {
             download_template_excel('template_import_rapor.xlsx', $headers);
